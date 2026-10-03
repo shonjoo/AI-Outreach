@@ -496,8 +496,7 @@ def load_all_contacts(backend_name: str, db_path: str):
     database = Database(db_path, config=config)
     return database.list_contacts()
 
-# Remote Access Security: Optional Dashboard Password Check
-import os
+# Remote Access Security: Dashboard Password Gate
 dashboard_password = os.getenv("DASHBOARD_PASSWORD", "").strip()
 
 if dashboard_password:
@@ -505,15 +504,27 @@ if dashboard_password:
         st.session_state["authenticated"] = False
 
     if not st.session_state["authenticated"]:
-        st.title("Login")
-        st.write("Password required.")
-        pwd_input = st.text_input("Password:", type="password")
-        if st.button("Log In"):
-            if pwd_input == dashboard_password:
-                st.session_state["authenticated"] = True
-                st.rerun()
-            else:
-                st.error("Incorrect password.")
+        _, center_col, _ = st.columns([1, 2, 1])
+        with center_col:
+            st.markdown(
+                """
+                <div class="shadcn-card" style="margin-top: 3.5rem; margin-bottom: 1.25rem; text-align: center; padding: 2rem;">
+                    <div style="width: 44px; height: 44px; border-radius: 10px; background: #fafafa; color: #09090b; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.35rem; margin-bottom: 0.85rem; box-shadow: 0 2px 8px rgba(0,0,0,0.4);">✦</div>
+                    <div style="font-weight: 600; font-size: 1.35rem; color: #fafafa; letter-spacing: -0.025em;">Outreach Studio</div>
+                    <div style="font-size: 0.85rem; color: #a1a1aa; margin-top: 0.35rem;">Authentication required to access outreach intelligence.</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+            with st.form("shadcn_login_form"):
+                pwd_input = st.text_input("Access Password", type="password", placeholder="Enter dashboard password...")
+                submit_login = st.form_submit_button("Unlock Studio", type="primary", use_container_width=True)
+                if submit_login:
+                    if pwd_input == dashboard_password:
+                        st.session_state["authenticated"] = True
+                        st.rerun()
+                    else:
+                        st.error("Incorrect password. Access denied.")
         st.stop()
 
 # Sidebar
@@ -683,6 +694,12 @@ with st.sidebar:
                     db.insert_contact(contact)
             load_all_contacts.clear()
             st.success("Sample contacts loaded.")
+            st.rerun()
+
+    if dashboard_password:
+        st.markdown("<hr style='margin: 1.5rem 0 1rem 0; border-color: #27272a;'>", unsafe_allow_html=True)
+        if st.button("Log out of Studio", use_container_width=True):
+            st.session_state["authenticated"] = False
             st.rerun()
 
 
