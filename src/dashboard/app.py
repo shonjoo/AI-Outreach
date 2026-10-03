@@ -45,15 +45,18 @@ st.markdown(
        ========================================================================== */
 
     :root {
-        --figma-bg-primary: #09090b;
-        --figma-bg-surface: #18181b;
-        --figma-bg-surface-elevated: #27272a;
-        --figma-border: #27272a;
-        --figma-border-subtle: #1e1e22;
-        --figma-border-hover: #3f3f46;
-        --figma-text-primary: #fafafa;
-        --figma-text-secondary: #a1a1aa;
-        --figma-text-muted: #71717a;
+        --figma-bg-primary: #050505;
+        --figma-bg-surface: #0f1110;
+        --figma-bg-surface-elevated: #161917;
+        --figma-border: #1e2420;
+        --figma-border-subtle: #141815;
+        --figma-border-hover: #10b981;
+        --figma-accent: #10b981;
+        --figma-accent-hover: #059669;
+        --figma-accent-glow: rgba(16, 185, 129, 0.25);
+        --figma-text-primary: #f0fdf4;
+        --figma-text-secondary: #94a3b8;
+        --figma-text-muted: #64748b;
         --figma-radius-sm: 6px;
         --figma-radius-md: 8px;
         --figma-radius-lg: 12px;
@@ -180,10 +183,10 @@ st.markdown(
     }
 
     div[data-testid="stTabs"] button[role="tab"][aria-selected="true"] {
-        background-color: #27272a !important;
-        color: #ffffff !important;
+        background-color: var(--figma-accent) !important;
+        color: #050505 !important;
         font-weight: 600 !important;
-        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.35) !important;
+        box-shadow: 0 1px 4px 0 var(--figma-accent-glow) !important;
         transform: none !important;
     }
 
@@ -192,18 +195,18 @@ st.markdown(
         display: none !important;
     }
 
-    /* ShadCN Primary Buttons */
+    /* Emerald Green Primary Buttons */
     button[kind="primary"],
     [data-testid="stButton"] > button[kind="primary"],
     [data-testid="stFormSubmitButton"] > button[kind="primary"] {
-        background-color: #fafafa !important;
-        border: 1px solid #fafafa !important;
-        color: #09090b !important;
-        font-weight: 500 !important;
+        background-color: var(--figma-accent) !important;
+        border: 1px solid var(--figma-accent) !important;
+        color: #050505 !important;
+        font-weight: 600 !important;
         font-size: 0.875rem !important;
-        border-radius: 0.375rem !important;
+        border-radius: var(--figma-radius-sm) !important;
         padding: 8px 16px !important;
-        box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
+        box-shadow: 0 1px 3px 0 var(--figma-accent-glow) !important;
         transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1) !important;
         min-height: 36px !important;
         will-change: transform, box-shadow, background-color, border-color;
@@ -212,20 +215,21 @@ st.markdown(
     button[kind="primary"]:hover,
     [data-testid="stButton"] > button[kind="primary"]:hover,
     [data-testid="stFormSubmitButton"] > button[kind="primary"]:hover {
-        background-color: #ffffff !important;
-        border-color: #ffffff !important;
-        color: #09090b !important;
+        background-color: #34d399 !important;
+        border-color: #34d399 !important;
+        color: #050505 !important;
         transform: translateY(-1.5px) !important;
-        box-shadow: 0 4px 14px 0 rgba(255, 255, 255, 0.18) !important;
+        box-shadow: 0 4px 14px 0 rgba(16, 185, 129, 0.4) !important;
     }
 
     button[kind="primary"]:active,
     [data-testid="stButton"] > button[kind="primary"]:active,
     [data-testid="stFormSubmitButton"] > button[kind="primary"]:active {
         transform: translateY(0.5px) scale(0.98) !important;
-        box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.1) !important;
+        box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.2) !important;
         transition: all 0.08s ease !important;
     }
+
 
     /* ShadCN Secondary / Outline Buttons */
     button[kind="secondary"],
@@ -522,13 +526,13 @@ st.markdown(
 def shadcn_badge(label: str, variant: str = "secondary") -> str:
     """Renders a pixel-perfect ShadCN UI badge component."""
     variants = {
-        "default": "background-color: #fafafa; color: #18181b; border: 1px solid #fafafa;",
-        "secondary": "background-color: #27272a; color: #f4f4f5; border: 1px solid #3f3f46;",
-        "outline": "background-color: transparent; color: #a1a1aa; border: 1px solid #27272a;",
-        "success": "background-color: rgba(34, 197, 94, 0.12); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.3);",
+        "default": "background-color: #10b981; color: #050505; border: 1px solid #10b981; font-weight: 700;",
+        "secondary": "background-color: #161917; color: #f0fdf4; border: 1px solid #1e2420;",
+        "outline": "background-color: transparent; color: #10b981; border: 1px solid #10b981;",
+        "success": "background-color: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4);",
         "warning": "background-color: rgba(245, 158, 11, 0.12); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3);",
         "destructive": "background-color: rgba(239, 68, 68, 0.12); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3);",
-        "cloud": "background-color: rgba(56, 189, 248, 0.12); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3);",
+        "cloud": "background-color: rgba(16, 185, 129, 0.15); color: #6ee7b7; border: 1px solid rgba(16, 185, 129, 0.35);",
     }
     style = variants.get(variant, variants["secondary"])
     return (
@@ -561,10 +565,10 @@ if dashboard_password:
         with center_col:
             st.markdown(
                 """
-                <div class="shadcn-card" style="margin-top: 3.5rem; margin-bottom: 1.25rem; text-align: center; padding: 2rem;">
-                    <div style="width: 44px; height: 44px; border-radius: 10px; background: #fafafa; color: #09090b; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.35rem; margin-bottom: 0.85rem; box-shadow: 0 2px 8px rgba(0,0,0,0.4);">✦</div>
-                    <div style="font-weight: 600; font-size: 1.35rem; color: #fafafa; letter-spacing: -0.025em;">Outreach Studio</div>
-                    <div style="font-size: 0.85rem; color: #a1a1aa; margin-top: 0.35rem;">Authentication required to access outreach intelligence.</div>
+                <div class="shadcn-card" style="margin-top: 3.5rem; margin-bottom: 1.25rem; text-align: center; padding: 2rem; border-color: rgba(16, 185, 129, 0.3);">
+                    <div style="width: 44px; height: 44px; border-radius: 10px; background: #10b981; color: #050505; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.35rem; margin-bottom: 0.85rem; box-shadow: 0 0 16px rgba(16, 185, 129, 0.4);">✦</div>
+                    <div style="font-weight: 600; font-size: 1.35rem; color: #f0fdf4; letter-spacing: -0.025em;">Outreach Studio</div>
+                    <div style="font-size: 0.85rem; color: #94a3b8; margin-top: 0.35rem;">Authentication required to access outreach intelligence.</div>
                 </div>
                 """,
                 unsafe_allow_html=True,
@@ -584,12 +588,13 @@ if dashboard_password:
 with st.sidebar:
     st.markdown("""
     <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 1.25rem;">
-        <div style="width: 32px; height: 32px; border-radius: 8px; background: #fafafa; display: flex; align-items: center; justify-content: center; color: #09090b; font-weight: 700; font-size: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,0.3);">✦</div>
+        <div style="width: 32px; height: 32px; border-radius: 8px; background: #10b981; display: flex; align-items: center; justify-content: center; color: #050505; font-weight: 700; font-size: 1rem; box-shadow: 0 0 10px rgba(16, 185, 129, 0.35);">✦</div>
         <div>
-            <div style="font-weight: 600; font-size: 1rem; color: #fafafa; letter-spacing: -0.02em; line-height: 1.2;">Outreach Studio</div>
-            <div style="font-size: 0.72rem; color: #a1a1aa;">ShadCN Intelligence Engine</div>
+            <div style="font-weight: 600; font-size: 1rem; color: #f0fdf4; letter-spacing: -0.02em; line-height: 1.2;">Outreach Studio</div>
+            <div style="font-size: 0.72rem; color: #10b981; font-weight: 500;">Intelligence Engine</div>
         </div>
     </div>
+
     """, unsafe_allow_html=True)
 
     # Sender Card
