@@ -50,10 +50,10 @@ st.markdown(
         --figma-bg-surface-elevated: #161917;
         --figma-border: #1e2420;
         --figma-border-subtle: #141815;
-        --figma-border-hover: #10b981;
-        --figma-accent: #10b981;
-        --figma-accent-hover: #059669;
-        --figma-accent-glow: rgba(16, 185, 129, 0.25);
+        --figma-border-hover: #84cc16;
+        --figma-accent: #84cc16;
+        --figma-accent-hover: #65a30d;
+        --figma-accent-glow: rgba(132, 204, 22, 0.25);
         --figma-text-primary: #f0fdf4;
         --figma-text-secondary: #94a3b8;
         --figma-text-muted: #64748b;
@@ -195,7 +195,7 @@ st.markdown(
         display: none !important;
     }
 
-    /* Emerald Green Primary Buttons */
+    /* Lime Green Primary Buttons */
     button[kind="primary"],
     [data-testid="stButton"] > button[kind="primary"],
     [data-testid="stFormSubmitButton"] > button[kind="primary"] {
@@ -215,11 +215,11 @@ st.markdown(
     button[kind="primary"]:hover,
     [data-testid="stButton"] > button[kind="primary"]:hover,
     [data-testid="stFormSubmitButton"] > button[kind="primary"]:hover {
-        background-color: #34d399 !important;
-        border-color: #34d399 !important;
+        background-color: #a3e635 !important;
+        border-color: #a3e635 !important;
         color: #050505 !important;
         transform: translateY(-1.5px) !important;
-        box-shadow: 0 4px 14px 0 rgba(16, 185, 129, 0.4) !important;
+        box-shadow: 0 4px 14px 0 rgba(132, 204, 22, 0.4) !important;
     }
 
     button[kind="primary"]:active,
@@ -577,13 +577,13 @@ st.markdown(
 def shadcn_badge(label: str, variant: str = "secondary") -> str:
     """Renders a pixel-perfect ShadCN UI badge component."""
     variants = {
-        "default": "background-color: #10b981; color: #050505; border: 1px solid #10b981; font-weight: 700;",
+        "default": "background-color: #84cc16; color: #050505; border: 1px solid #84cc16; font-weight: 700;",
         "secondary": "background-color: #161917; color: #f0fdf4; border: 1px solid #1e2420;",
-        "outline": "background-color: transparent; color: #10b981; border: 1px solid #10b981;",
-        "success": "background-color: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4);",
+        "outline": "background-color: transparent; color: #84cc16; border: 1px solid #84cc16;",
+        "success": "background-color: rgba(132, 204, 22, 0.15); color: #a3e635; border: 1px solid rgba(132, 204, 22, 0.4);",
         "warning": "background-color: rgba(245, 158, 11, 0.12); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3);",
         "destructive": "background-color: rgba(239, 68, 68, 0.12); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3);",
-        "cloud": "background-color: rgba(16, 185, 129, 0.15); color: #6ee7b7; border: 1px solid rgba(16, 185, 129, 0.35);",
+        "cloud": "background-color: rgba(132, 204, 22, 0.15); color: #bef264; border: 1px solid rgba(132, 204, 22, 0.35);",
     }
     style = variants.get(variant, variants["secondary"])
     return (
@@ -616,8 +616,8 @@ if dashboard_password:
         with center_col:
             st.markdown(
                 """
-                <div class="shadcn-card" style="margin-top: 3.5rem; margin-bottom: 1.25rem; text-align: center; padding: 2rem; border-color: rgba(16, 185, 129, 0.3);">
-                    <div style="width: 44px; height: 44px; border-radius: 10px; background: #10b981; color: #050505; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.35rem; margin-bottom: 0.85rem; box-shadow: 0 0 16px rgba(16, 185, 129, 0.4);">✦</div>
+                <div class="shadcn-card" style="margin-top: 3.5rem; margin-bottom: 1.25rem; text-align: center; padding: 2rem; border-color: rgba(132, 204, 22, 0.3);">
+                    <div style="width: 44px; height: 44px; border-radius: 10px; background: #84cc16; color: #050505; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.35rem; margin-bottom: 0.85rem; box-shadow: 0 0 16px rgba(132, 204, 22, 0.4);">✦</div>
                     <div style="font-weight: 600; font-size: 1.35rem; color: #f0fdf4; letter-spacing: -0.025em;">Outreach Studio</div>
                     <div style="font-size: 0.85rem; color: #94a3b8; margin-top: 0.35rem;">Authentication required to access outreach intelligence.</div>
                 </div>
@@ -639,10 +639,10 @@ if dashboard_password:
 with st.sidebar:
     st.markdown("""
     <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 1.25rem;">
-        <div style="width: 32px; height: 32px; border-radius: 8px; background: #10b981; display: flex; align-items: center; justify-content: center; color: #050505; font-weight: 700; font-size: 1rem; box-shadow: 0 0 10px rgba(16, 185, 129, 0.35);">✦</div>
+        <div style="width: 32px; height: 32px; border-radius: 8px; background: #84cc16; display: flex; align-items: center; justify-content: center; color: #050505; font-weight: 700; font-size: 1rem; box-shadow: 0 0 10px rgba(132, 204, 22, 0.35);">✦</div>
         <div>
             <div style="font-weight: 600; font-size: 1rem; color: #f0fdf4; letter-spacing: -0.02em; line-height: 1.2;">almost normal</div>
-            <div style="font-size: 0.72rem; color: #10b981; font-weight: 500;">Outreach Studio</div>
+            <div style="font-size: 0.72rem; color: #84cc16; font-weight: 500;">Outreach Studio</div>
         </div>
     </div>
 
@@ -843,7 +843,7 @@ col_h1, col_h2 = st.columns([3, 1])
 with col_h1:
     st.markdown("""
     <div style="margin-bottom: 0.75rem;">
-        <h1 style="font-size: 1.85rem; font-weight: 700; letter-spacing: -0.03em; margin: 0; color: #fafafa;">almost normal <span style="font-weight: 400; font-size: 1.25rem; color: #10b981;">• Outreach Studio</span></h1>
+        <h1 style="font-size: 1.85rem; font-weight: 700; letter-spacing: -0.03em; margin: 0; color: #fafafa;">almost normal <span style="font-weight: 400; font-size: 1.25rem; color: #84cc16;">• Outreach Studio</span></h1>
         <p style="font-size: 0.875rem; color: #a1a1aa; margin: 0.25rem 0 0 0;">Autonomous prospect research, verified-fact personalization, and compliant cold messaging.</p>
     </div>
 
