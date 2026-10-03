@@ -714,12 +714,16 @@ with st.sidebar:
 
 # Main Dashboard
 all_contacts = load_all_contacts(db.backend_name, config.db_path)
+all_drafts_map = db.list_all_drafts()
+all_dossiers_map = db.list_all_dossiers()
+
 total_count = len(all_contacts)
 approved_count = sum(1 for c in all_contacts if c.status == ContactStatus.APPROVED)
 needs_review_count = sum(1 for c in all_contacts if c.status in (ContactStatus.READY_FOR_REVIEW, ContactStatus.NEEDS_MANUAL_REVIEW))
-flagged_count = sum(1 for c in all_contacts if (d := db.get_draft(c.id)) and d.status == DraftStatus.FLAGGED)
+flagged_count = sum(1 for c in all_contacts if (d := all_drafts_map.get(c.id)) and d.status == DraftStatus.FLAGGED)
 sent_today = db.get_today_sent_count()
 limit_today = config.limits.emails_per_day
+
 
 # ShadCN Header
 col_h1, col_h2 = st.columns([3, 1])
@@ -827,7 +831,7 @@ with tab_drafts:
 
     filtered_contacts = []
     for c in all_contacts:
-        c_draft = db.get_draft(c.id)
+        c_draft = all_drafts_map.get(c.id)
         if status_filter == "Pending actions":
             if c.status in (ContactStatus.READY_FOR_REVIEW, ContactStatus.NEEDS_MANUAL_REVIEW, ContactStatus.PENDING_RESEARCH):
                 filtered_contacts.append(c)
@@ -845,10 +849,11 @@ with tab_drafts:
         st.caption(f"Showing {len(filtered_contacts)} prospects")
 
         for contact in filtered_contacts:
-            dossier = db.get_dossier(contact.id)
-            draft = db.get_draft(contact.id)
+            dossier = all_dossiers_map.get(contact.id)
+            draft = all_drafts_map.get(contact.id)
             is_flagged = bool(draft and draft.status == DraftStatus.FLAGGED)
             flagged_tag = " • [FLAGGED]" if is_flagged else ""
+
 
             # Expander header
             with st.expander(

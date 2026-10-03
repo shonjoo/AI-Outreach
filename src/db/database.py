@@ -6,7 +6,7 @@ import os
 import sqlite3
 from datetime import datetime
 from pathlib import Path
-from typing import Any, List, Optional
+from typing import Any, Dict, List, Optional
 
 from src.db.models import (
     Contact,
@@ -472,6 +472,69 @@ class Database:
                     updated_at=row["updated_at"],
                 )
         return None
+
+    def list_all_drafts(self) -> Dict[int, Draft]:
+        """Returns a mapping of contact_id -> Draft in a single batch query."""
+        if self._backend and hasattr(self._backend, "list_all_drafts"):
+            return self._backend.list_all_drafts()
+
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM drafts")
+            rows = cursor.fetchall()
+            drafts = {}
+            for row in rows:
+                wa_msg = row["whatsapp_message"] if "whatsapp_message" in row.keys() else ""
+                d = Draft(
+                    id=row["id"],
+                    contact_id=row["contact_id"],
+                    hook=row["hook"],
+                    linkedin_note=row["linkedin_note"] or "",
+                    linkedin_message=row["linkedin_message"] or "",
+                    whatsapp_message=wa_msg or "",
+                    email_subject=row["email_subject"] or "",
+                    email_subject_alt1=row["email_subject_alt1"] or "",
+                    email_subject_alt2=row["email_subject_alt2"] or "",
+                    email_body=row["email_body"] or "",
+                    followup_subject=row["followup_subject"] or "",
+                    followup_body=row["followup_body"] or "",
+                    source_facts=json.loads(row["source_facts"] or "[]"),
+                    status=DraftStatus(row["status"]),
+                    version=row["version"],
+                    created_at=row["created_at"],
+                    updated_at=row["updated_at"],
+                )
+                drafts[d.contact_id] = d
+            return drafts
+
+    def list_all_dossiers(self) -> Dict[int, ResearchDossier]:
+        """Returns a mapping of contact_id -> ResearchDossier in a single batch query."""
+        if self._backend and hasattr(self._backend, "list_all_dossiers"):
+            return self._backend.list_all_dossiers()
+
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM research_dossiers")
+            rows = cursor.fetchall()
+            dossiers = {}
+            for row in rows:
+                dos = ResearchDossier(
+                    id=row["id"],
+                    contact_id=row["contact_id"],
+                    business_name=row["business_name"],
+                    website_url=row["website_url"] or "",
+                    website_title=row["website_title"] or "",
+                    website_summary=row["website_summary"] or "",
+                    detected_opportunities=json.loads(row["detected_opportunities"] or "[]"),
+                    search_snippets=json.loads(row["search_snippets"] or "[]"),
+                    user_pasted_content=row["user_pasted_content"] or "",
+                    verifiable_facts=json.loads(row["verifiable_facts"] or "[]"),
+                    has_strong_hook=bool(row["has_strong_hook"]),
+                    created_at=row["created_at"],
+                )
+                dossiers[dos.contact_id] = dos
+            return dossiers
+
 
     def update_draft_status(self, draft_id: int, status: DraftStatus):
         if self._backend:

@@ -29,7 +29,7 @@ BOOKING_SIGNALS = [
 
 
 class WebsiteCrawler:
-    def __init__(self, timeout: int = 8, max_subpages: int = 3):
+    def __init__(self, timeout: int = 5, max_subpages: int = 2):
         self.timeout = timeout
         self.max_subpages = max_subpages
         self.headers = {
