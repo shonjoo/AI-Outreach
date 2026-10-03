@@ -107,6 +107,19 @@ class AppConfig:
     google_client_secret_file: str = "credentials.json"
     google_token_file: str = "token.json"
 
+    @property
+    def db_backend(self) -> str:
+        return self.database.active_backend
+
+    @property
+    def supabase_url(self) -> Optional[str]:
+        return self.database.supabase_url
+
+    @property
+    def supabase_key(self) -> Optional[str]:
+        return self.database.supabase_key or self.database.supabase_service_role_key
+
+
 
 def load_config(config_path: str = "config.yaml") -> AppConfig:
     """Loads configuration from YAML and environment variables."""

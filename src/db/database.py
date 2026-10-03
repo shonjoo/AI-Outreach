@@ -61,19 +61,33 @@ class Database(BaseDatabase):
             and bool(supabase_url and supabase_key)
         )
 
+        self.supabase_schema_pending = False
         if use_supabase:
             try:
                 from src.db.supabase_db import SupabaseDatabase
 
-                self._backend = SupabaseDatabase(supabase_url, supabase_key)
+                sb = SupabaseDatabase(supabase_url, supabase_key)
+                # Verify that tables exist in Supabase schema cache
+                sb.client.table("contacts").select("id").limit(1).execute()
+                self._backend = sb
                 logger.info(f"Connected to Supabase database backend: {supabase_url}")
             except Exception as e:
-                logger.warning(f"Failed to initialize Supabase ({e}). Falling back to SQLite.")
+                err_str = str(e)
+                if "PGRST205" in err_str or "Could not find the table" in err_str:
+                    logger.warning(
+                        "Supabase connected successfully, but 'contacts' table is not yet created in Supabase schema cache. "
+                        "Please run 'supabase_schema.sql' in your Supabase Dashboard SQL Editor. "
+                        "Falling back to local SQLite in the meantime."
+                    )
+                    self.supabase_schema_pending = True
+                else:
+                    logger.warning(f"Failed to initialize Supabase ({e}). Falling back to SQLite.")
                 self._backend = None
 
         if self._backend is None:
             Path(db_path).parent.mkdir(parents=True, exist_ok=True)
             self.init_db()
+
 
     @property
     def is_supabase(self) -> bool:

@@ -173,8 +173,20 @@ with st.sidebar:
     st.markdown(f"**Sender:** {config.sender.name}")
     st.markdown(f"**From:** `{config.sender.email}`")
     st.markdown(f"**LLM Provider:** `{config.llm.provider.upper()}`")
-    backend_display = "SUPABASE (Cloud)" if db.is_supabase else "SQLITE (Local)"
-    st.markdown(f"**Database:** `{backend_display}`")
+    if db.is_supabase:
+        backend_display = "SUPABASE (Cloud)"
+        st.markdown(f"**Database:** `{backend_display}`")
+    elif getattr(db, "supabase_schema_pending", False):
+        backend_display = "SQLITE (Local - Supabase schema pending)"
+        st.markdown(f"**Database:** `{backend_display}`")
+        with st.expander("⚡ Activate Supabase Cloud", expanded=False):
+            st.caption(
+                "Credentials detected! Run `supabase_schema.sql` in your Supabase SQL Editor to initialize tables."
+            )
+    else:
+        backend_display = "SQLITE (Local)"
+        st.markdown(f"**Database:** `{backend_display}`")
+
 
     st.divider()
     dry_run_active = st.toggle("Dry-run mode", value=config.dry_run)
