@@ -2,6 +2,7 @@
 
 import csv
 import io
+import os
 import re
 import sys
 import urllib.parse
