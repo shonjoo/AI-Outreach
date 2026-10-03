@@ -10,5 +10,9 @@ font = "sans serif"
 toolbarMode = "minimal"
 showErrorDetails = true
 
+[server]
+maxUploadSize = 10
+
 [browser]
 gatherUsageStats = false
+

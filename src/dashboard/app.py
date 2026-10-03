@@ -662,14 +662,21 @@ with st.sidebar:
     <div class="shadcn-card-title" style="margin: 1.25rem 0 0.4rem 0;">Import Leads</div>
     """, unsafe_allow_html=True)
 
+    MAX_UPLOAD_MB = 10
     uploaded_file = st.file_uploader(
-        "Contacts file (.csv, .xlsx):",
+        f"Contacts file (.csv, .xlsx, max {MAX_UPLOAD_MB}MB):",
         type=["csv", "xlsx", "xlsm"],
     )
 
     if uploaded_file is not None:
         file_bytes = uploaded_file.getvalue()
         fname = uploaded_file.name
+
+        # Enforce maximum upload limit
+        if len(file_bytes) > MAX_UPLOAD_MB * 1024 * 1024:
+            st.error(f"File size exceeds {MAX_UPLOAD_MB}MB limit. Please upload a smaller file.")
+            st.stop()
+
 
         # If Excel workbook, check available sheets
         target_sheet = None
