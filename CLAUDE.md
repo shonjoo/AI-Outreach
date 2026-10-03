@@ -54,7 +54,7 @@ python -m unittest discover tests
 streamlit run streamlit_app.py --server.port 8501
 
 # 3. CLI Pipeline Execution
-python -m src.cli pipeline --csv data/sample_contacts.csv
+python -m src.cli pipeline --csv path/to/contacts.csv
 python -m src.cli research
 python -m src.cli generate
 python -m src.cli stats

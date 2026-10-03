@@ -143,7 +143,7 @@ def main():
 
     # Pipeline
     p_pipe = subparsers.add_parser("pipeline", help="Run full pipeline: ingest -> research -> generate")
-    p_pipe.add_argument("--csv", default="data/sample_contacts.csv", help="Path to contacts CSV")
+    p_pipe.add_argument("--csv", required=True, help="Path to contacts CSV")
 
     # Ingest
     p_ingest = subparsers.add_parser("ingest", help="Ingest contacts CSV into database")

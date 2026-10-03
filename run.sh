@@ -31,7 +31,11 @@ case "$CMD" in
         "$STREAMLIT" run src/dashboard/app.py --server.headless=true
         ;;
     pipeline)
-        CSV="${2:-data/sample_contacts.csv}"
+        CSV="$2"
+        if [ -z "$CSV" ]; then
+            echo "❌ Please provide a path to a contacts CSV file: ./run.sh pipeline path/to/contacts.csv"
+            exit 1
+        fi
         echo "⚡ Running pipeline on $CSV..."
         "$PYTHON" src/cli.py pipeline --csv "$CSV"
         ;;
