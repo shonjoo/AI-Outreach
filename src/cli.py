@@ -182,7 +182,7 @@ def main():
 
     args = parser.parse_args()
     config = load_config()
-    db = Database(config.db_path)
+    db = Database(config.db_path, config=config)
 
     if args.command == "ingest":
         cmd_ingest(args, config, db)

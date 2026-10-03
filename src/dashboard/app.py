@@ -134,18 +134,18 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# Cached database loader (Requirement 4: Wrap contact loading in st.cache_data)
-@st.cache_data(show_spinner=False)
-def load_all_contacts(db_path: str):
-    database = Database(db_path)
-    return database.list_contacts()
-
 config = load_config()
-db = Database(config.db_path)
+db = Database(config.db_path, config=config)
 dossier_builder = DossierBuilder()
 draft_gen = DraftGenerator(config, db)
 sender = OutreachSender(config, db)
 suppression_mgr = SuppressionManager(db)
+
+# Cached database loader (Requirement 4: Wrap contact loading in st.cache_data)
+@st.cache_data(show_spinner=False)
+def load_all_contacts(backend_name: str, db_path: str):
+    database = Database(db_path, config=config)
+    return database.list_contacts()
 
 # Remote Access Security: Optional Dashboard Password Check
 import os
@@ -173,6 +173,8 @@ with st.sidebar:
     st.markdown(f"**Sender:** {config.sender.name}")
     st.markdown(f"**From:** `{config.sender.email}`")
     st.markdown(f"**LLM Provider:** `{config.llm.provider.upper()}`")
+    backend_display = "SUPABASE (Cloud)" if db.is_supabase else "SQLITE (Local)"
+    st.markdown(f"**Database:** `{backend_display}`")
 
     st.divider()
     dry_run_active = st.toggle("Dry-run mode", value=config.dry_run)
@@ -295,7 +297,7 @@ tab_drafts, tab_sent, tab_followups, tab_suppression = st.tabs(
 # ----------------- TAB 1: DRAFTS -----------------
 with tab_drafts:
     st.header("Drafts")
-    all_contacts = load_all_contacts(config.db_path)
+    all_contacts = load_all_contacts(db.backend_name, config.db_path)
     unprocessed_contacts = [c for c in all_contacts if not db.get_draft(c.id)]
 
     # Persistent toolbar container (prevents vertical layout shift on first load)

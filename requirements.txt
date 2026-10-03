@@ -2,6 +2,7 @@
 pyyaml>=6.0.1
 python-dotenv>=1.0.1
 pydantic>=2.7.0
+supabase>=2.32.0
 
 # Web Research & Crawling
 requests>=2.32.0

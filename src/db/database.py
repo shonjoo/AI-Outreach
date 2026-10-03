@@ -1,11 +1,14 @@
-"""SQLite database management and repository methods."""
+"""Database management and repository methods (SQLite and Supabase adapter)."""
 
 import json
+import logging
+import os
 import sqlite3
 from datetime import datetime
 from pathlib import Path
-from typing import List, Optional
+from typing import Any, List, Optional
 
+from src.db.base import BaseDatabase
 from src.db.models import (
     Contact,
     ContactStatus,
@@ -16,12 +19,71 @@ from src.db.models import (
     SuppressionEntry,
 )
 
+logger = logging.getLogger(__name__)
 
-class Database:
-    def __init__(self, db_path: str = "outreach.db"):
+
+class Database(BaseDatabase):
+    """
+    Unified database repository.
+    Acts as a facade: delegates to SupabaseDatabase when configured,
+    or falls back seamlessly to local SQLite storage.
+    """
+
+    def __init__(
+        self,
+        db_path: str = "outreach.db",
+        config: Optional[Any] = None,
+        force_sqlite: bool = False,
+    ):
         self.db_path = db_path
-        Path(db_path).parent.mkdir(parents=True, exist_ok=True)
-        self.init_db()
+        self._backend: Optional[BaseDatabase] = None
+
+        # Check if Supabase should be activated
+        supabase_url = os.getenv("SUPABASE_URL")
+        supabase_key = (
+            os.getenv("SUPABASE_KEY")
+            or os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+            or os.getenv("SUPABASE_ANON_KEY")
+        )
+        db_backend = os.getenv("DB_BACKEND", "auto").strip().lower()
+
+        if config and hasattr(config, "database"):
+            if config.database.supabase_url:
+                supabase_url = config.database.supabase_url
+            if config.database.supabase_key or config.database.supabase_service_role_key:
+                supabase_key = config.database.supabase_key or config.database.supabase_service_role_key
+            if config.database.backend:
+                db_backend = config.database.backend.strip().lower()
+
+        use_supabase = (
+            not force_sqlite
+            and db_backend != "sqlite"
+            and bool(supabase_url and supabase_key)
+        )
+
+        if use_supabase:
+            try:
+                from src.db.supabase_db import SupabaseDatabase
+
+                self._backend = SupabaseDatabase(supabase_url, supabase_key)
+                logger.info(f"Connected to Supabase database backend: {supabase_url}")
+            except Exception as e:
+                logger.warning(f"Failed to initialize Supabase ({e}). Falling back to SQLite.")
+                self._backend = None
+
+        if self._backend is None:
+            Path(db_path).parent.mkdir(parents=True, exist_ok=True)
+            self.init_db()
+
+    @property
+    def is_supabase(self) -> bool:
+        """Returns True if currently connected to Supabase."""
+        return self._backend is not None
+
+    @property
+    def backend_name(self) -> str:
+        """Returns 'supabase' or 'sqlite'."""
+        return "supabase" if self.is_supabase else "sqlite"
 
     def get_connection(self) -> sqlite3.Connection:
         conn = sqlite3.connect(self.db_path)
@@ -116,10 +178,13 @@ class Database:
     # ------------------ Contacts ------------------
 
     def insert_contact(self, contact: Contact) -> int:
+        if self._backend:
+            return self._backend.insert_contact(contact)
+
         now = datetime.utcnow().isoformat()
         clean_email = contact.email.strip().lower() if contact.email else ""
         if not clean_email or "@" not in clean_email:
-            identifier = contact.linkedin_url.strip() or f"{contact.first_name}_{contact.company}"
+            identifier = contact.linkedin_url.strip() if contact.linkedin_url else f"{contact.first_name}_{contact.company}"
             clean_email = f"li_{abs(hash(identifier)) % 100000000}@linkedin-lead.local"
 
         with self.get_connection() as conn:
@@ -158,6 +223,9 @@ class Database:
             return row["id"] if row else cursor.lastrowid
 
     def get_contact(self, contact_id: int) -> Optional[Contact]:
+        if self._backend:
+            return self._backend.get_contact(contact_id)
+
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT * FROM contacts WHERE id = ?", (contact_id,))
@@ -180,6 +248,9 @@ class Database:
         return None
 
     def list_contacts(self, status: Optional[ContactStatus] = None) -> List[Contact]:
+        if self._backend:
+            return self._backend.list_contacts(status)
+
         with self.get_connection() as conn:
             cursor = conn.cursor()
             if status:
@@ -206,6 +277,9 @@ class Database:
             ]
 
     def update_contact_status(self, contact_id: int, status: ContactStatus):
+        if self._backend:
+            return self._backend.update_contact_status(contact_id, status)
+
         now = datetime.utcnow().isoformat()
         with self.get_connection() as conn:
             conn.execute(
@@ -213,9 +287,23 @@ class Database:
                 (status.value, now, contact_id),
             )
 
+    def update_contact_notes(self, contact_id: int, notes: str):
+        if self._backend:
+            return self._backend.update_contact_notes(contact_id, notes)
+
+        now = datetime.utcnow().isoformat()
+        with self.get_connection() as conn:
+            conn.execute(
+                "UPDATE contacts SET notes = ?, updated_at = ? WHERE id = ?",
+                (notes.strip(), now, contact_id),
+            )
+
     # ------------------ Dossiers ------------------
 
     def save_dossier(self, dossier: ResearchDossier) -> int:
+        if self._backend:
+            return self._backend.save_dossier(dossier)
+
         now = datetime.utcnow().isoformat()
         with self.get_connection() as conn:
             cursor = conn.cursor()
@@ -256,6 +344,9 @@ class Database:
             return row["id"] if row else cursor.lastrowid
 
     def get_dossier(self, contact_id: int) -> Optional[ResearchDossier]:
+        if self._backend:
+            return self._backend.get_dossier(contact_id)
+
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT * FROM research_dossiers WHERE contact_id = ?", (contact_id,))
@@ -280,6 +371,9 @@ class Database:
     # ------------------ Drafts ------------------
 
     def save_draft(self, draft: Draft) -> int:
+        if self._backend:
+            return self._backend.save_draft(draft)
+
         now = datetime.utcnow().isoformat()
         with self.get_connection() as conn:
             cursor = conn.cursor()
@@ -328,6 +422,9 @@ class Database:
             return row["id"] if row else cursor.lastrowid
 
     def get_draft(self, contact_id: int) -> Optional[Draft]:
+        if self._backend:
+            return self._backend.get_draft(contact_id)
+
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT * FROM drafts WHERE contact_id = ?", (contact_id,))
@@ -354,6 +451,9 @@ class Database:
         return None
 
     def update_draft_status(self, draft_id: int, status: DraftStatus):
+        if self._backend:
+            return self._backend.update_draft_status(draft_id, status)
+
         now = datetime.utcnow().isoformat()
         with self.get_connection() as conn:
             conn.execute(
@@ -371,6 +471,11 @@ class Database:
         linkedin_message: str,
         status: DraftStatus = DraftStatus.EDITED,
     ):
+        if self._backend:
+            return self._backend.update_draft_content(
+                draft_id, hook, email_subject, email_body, linkedin_note, linkedin_message, status
+            )
+
         now = datetime.utcnow().isoformat()
         with self.get_connection() as conn:
             conn.execute(
@@ -396,6 +501,9 @@ class Database:
     # ------------------ Suppression List ------------------
 
     def add_to_suppression(self, email: str, reason: str = "Opt-out requested"):
+        if self._backend:
+            return self._backend.add_to_suppression(email, reason)
+
         now = datetime.utcnow().isoformat()
         with self.get_connection() as conn:
             conn.execute(
@@ -411,6 +519,9 @@ class Database:
             )
 
     def is_suppressed(self, email: str) -> bool:
+        if self._backend:
+            return self._backend.is_suppressed(email)
+
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute(
@@ -420,6 +531,9 @@ class Database:
             return cursor.fetchone() is not None
 
     def list_suppressed(self) -> List[SuppressionEntry]:
+        if self._backend:
+            return self._backend.list_suppressed()
+
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT * FROM suppression_list ORDER BY opted_out_at DESC")
@@ -436,6 +550,9 @@ class Database:
     # ------------------ Send Logs & Duplicate Protection ------------------
 
     def has_already_sent_email(self, email: str) -> bool:
+        if self._backend:
+            return self._backend.has_already_sent_email(email)
+
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute(
@@ -448,6 +565,9 @@ class Database:
             return cursor.fetchone() is not None
 
     def log_send(self, log: SendLog) -> int:
+        if self._backend:
+            return self._backend.log_send(log)
+
         now = datetime.utcnow().isoformat()
         with self.get_connection() as conn:
             cursor = conn.cursor()
@@ -486,6 +606,9 @@ class Database:
             return log_id
 
     def get_today_sent_count(self) -> int:
+        if self._backend:
+            return self._backend.get_today_sent_count()
+
         today_str = datetime.utcnow().strftime("%Y-%m-%d")
         with self.get_connection() as conn:
             cursor = conn.cursor()
@@ -497,6 +620,9 @@ class Database:
             return row["count"] if row else 0
 
     def list_send_logs(self, limit: int = 50) -> List[SendLog]:
+        if self._backend:
+            return self._backend.list_send_logs(limit)
+
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute(

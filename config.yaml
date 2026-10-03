@@ -24,3 +24,8 @@ limits:
 
 llm:
   provider: "gemini"
+
+database:
+  backend: "auto"  # "auto", "supabase", or "sqlite"
+  sqlite_path: "outreach.db"
+

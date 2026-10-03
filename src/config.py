@@ -73,12 +73,35 @@ class LLMConfig:
 
 
 @dataclass
+class DatabaseConfig:
+    backend: str = "auto"  # "auto", "supabase", or "sqlite"
+    supabase_url: Optional[str] = None
+    supabase_key: Optional[str] = None
+    supabase_service_role_key: Optional[str] = None
+    sqlite_path: str = "outreach.db"
+
+    @property
+    def is_supabase_configured(self) -> bool:
+        return bool(self.supabase_url and (self.supabase_key or self.supabase_service_role_key))
+
+    @property
+    def active_backend(self) -> str:
+        if self.backend.lower() == "sqlite":
+            return "sqlite"
+        if self.backend.lower() == "supabase":
+            return "supabase"
+        # Auto mode: choose supabase if credentials provided, else sqlite
+        return "supabase" if self.is_supabase_configured else "sqlite"
+
+
+@dataclass
 class AppConfig:
     sender: SenderConfig
     outreach: OutreachConfig
     style: StyleConfig
     limits: LimitsConfig
     llm: LLMConfig
+    database: DatabaseConfig = field(default_factory=DatabaseConfig)
     dry_run: bool = True
     db_path: str = "outreach.db"
     google_client_secret_file: str = "credentials.json"
@@ -136,6 +159,21 @@ def load_config(config_path: str = "config.yaml") -> AppConfig:
         openai_api_key=os.getenv("OPENAI_API_KEY"),
     )
 
+    db_data = data.get("database", {})
+    supabase_url = os.getenv("SUPABASE_URL") or db_data.get("supabase_url")
+    supabase_key = os.getenv("SUPABASE_KEY") or os.getenv("SUPABASE_ANON_KEY") or db_data.get("supabase_key")
+    supabase_service_role = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or db_data.get("supabase_service_role_key")
+    db_backend = os.getenv("DB_BACKEND") or db_data.get("backend", "auto")
+    sqlite_path = os.getenv("DB_PATH") or db_data.get("sqlite_path", "outreach.db")
+
+    database = DatabaseConfig(
+        backend=db_backend,
+        supabase_url=supabase_url.strip() if supabase_url else None,
+        supabase_key=supabase_key.strip() if supabase_key else None,
+        supabase_service_role_key=supabase_service_role.strip() if supabase_service_role else None,
+        sqlite_path=sqlite_path.strip(),
+    )
+
     dry_run_env = os.getenv("DRY_RUN", "True").strip().lower()
     dry_run = dry_run_env in ("true", "1", "yes", "t")
 
@@ -145,8 +183,9 @@ def load_config(config_path: str = "config.yaml") -> AppConfig:
         style=style,
         limits=limits,
         llm=llm,
+        database=database,
         dry_run=dry_run,
-        db_path=os.getenv("DB_PATH", "outreach.db"),
+        db_path=sqlite_path,
         google_client_secret_file=os.getenv("GOOGLE_CLIENT_SECRET_FILE", "credentials.json"),
         google_token_file=os.getenv("GOOGLE_TOKEN_FILE", "token.json"),
     )
