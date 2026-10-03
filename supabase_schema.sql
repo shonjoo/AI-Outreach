@@ -105,12 +105,12 @@ CREATE TABLE IF NOT EXISTS public.daily_send_counter (
 
 -- 7. Automatic updated_at Trigger
 CREATE OR REPLACE FUNCTION public.handle_updated_at()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER AS $body$
 BEGIN
     NEW.updated_at = timezone('utc'::text, now());
     RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$body$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS set_contacts_updated_at ON public.contacts;
 CREATE TRIGGER set_contacts_updated_at
@@ -132,36 +132,22 @@ ALTER TABLE public.send_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.suppression_list ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.daily_send_counter ENABLE ROW LEVEL SECURITY;
 
--- Allow full access to service_role and anon authenticated clients
-DO $$
-BEGIN
-    -- Contacts
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'contacts' AND policyname = 'Allow all access to contacts') THEN
-        CREATE POLICY "Allow all access to contacts" ON public.contacts FOR ALL USING (true) WITH CHECK (true);
-    END IF;
+-- Allow full access to service_role and authenticated/anon API clients
+DROP POLICY IF EXISTS "Allow all access to contacts" ON public.contacts;
+CREATE POLICY "Allow all access to contacts" ON public.contacts FOR ALL USING (true) WITH CHECK (true);
 
-    -- Dossiers
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'research_dossiers' AND policyname = 'Allow all access to research_dossiers') THEN
-        CREATE POLICY "Allow all access to research_dossiers" ON public.research_dossiers FOR ALL USING (true) WITH CHECK (true);
-    END IF;
+DROP POLICY IF EXISTS "Allow all access to research_dossiers" ON public.research_dossiers;
+CREATE POLICY "Allow all access to research_dossiers" ON public.research_dossiers FOR ALL USING (true) WITH CHECK (true);
 
-    -- Drafts
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'drafts' AND policyname = 'Allow all access to drafts') THEN
-        CREATE POLICY "Allow all access to drafts" ON public.drafts FOR ALL USING (true) WITH CHECK (true);
-    END IF;
+DROP POLICY IF EXISTS "Allow all access to drafts" ON public.drafts;
+CREATE POLICY "Allow all access to drafts" ON public.drafts FOR ALL USING (true) WITH CHECK (true);
 
-    -- Send Logs
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'send_logs' AND policyname = 'Allow all access to send_logs') THEN
-        CREATE POLICY "Allow all access to send_logs" ON public.send_logs FOR ALL USING (true) WITH CHECK (true);
-    END IF;
+DROP POLICY IF EXISTS "Allow all access to send_logs" ON public.send_logs;
+CREATE POLICY "Allow all access to send_logs" ON public.send_logs FOR ALL USING (true) WITH CHECK (true);
 
-    -- Suppression List
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'suppression_list' AND policyname = 'Allow all access to suppression_list') THEN
-        CREATE POLICY "Allow all access to suppression_list" ON public.suppression_list FOR ALL USING (true) WITH CHECK (true);
-    END IF;
+DROP POLICY IF EXISTS "Allow all access to suppression_list" ON public.suppression_list;
+CREATE POLICY "Allow all access to suppression_list" ON public.suppression_list FOR ALL USING (true) WITH CHECK (true);
 
-    -- Daily Send Counter
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'daily_send_counter' AND policyname = 'Allow all access to daily_send_counter') THEN
-        CREATE POLICY "Allow all access to daily_send_counter" ON public.daily_send_counter FOR ALL USING (true) WITH CHECK (true);
-    END IF;
-END $$;
+DROP POLICY IF EXISTS "Allow all access to daily_send_counter" ON public.daily_send_counter;
+CREATE POLICY "Allow all access to daily_send_counter" ON public.daily_send_counter FOR ALL USING (true) WITH CHECK (true);
+
