@@ -26,11 +26,13 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# Consolidated custom CSS: System font, layout containment, high contrast, and single accent color
+# ShadCN UI Theme - Zinc Dark Design System
 st.markdown(
     """
     <style>
-    /* System font for standard UI text, inputs, buttons, and markdown */
+    @import url('https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500;600&family=Inter:wght@300;400;500;600;700&display=swap');
+
+    /* Global Typography & Canvas */
     html, body,
     div[data-testid="stAppViewContainer"],
     div[data-testid="stAppViewBlockContainer"],
@@ -40,101 +42,305 @@ st.markdown(
     .stMarkdown,
     h1, h2, h3, h4, h5, h6,
     p, label, input, button, select, textarea {
-        font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        font-family: 'Geist', 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
     }
-    /* Fixed container sizing to prevent layout shift */
+
+    div[data-testid="stAppViewContainer"] {
+        background-color: #09090b !important;
+        color: #f4f4f5 !important;
+    }
+
+    div[data-testid="stHeader"] {
+        background-color: rgba(9, 9, 11, 0.75) !important;
+        backdrop-filter: blur(12px) !important;
+        border-bottom: 1px solid #27272a !important;
+    }
+
+    /* Headings */
+    h1, h2, h3, h4, h5, h6 {
+        color: #fafafa !important;
+        letter-spacing: -0.025em !important;
+        font-weight: 600 !important;
+    }
+
+    /* Layout Containment */
     div[data-testid="stVerticalBlock"] > div:has(> div[data-testid="stContainer"]) {
         contain: layout;
     }
-    /* Contrast: High contrast monospace for code blocks */
-    code, pre, .stCode, [data-testid="stMarkdownContainer"] code, [data-testid="stCodeBlock"], [data-testid="stCodeBlock"] * {
-        font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace !important;
-        color: #E6EDF3 !important;
-        background-color: #161B22 !important;
+
+    /* ShadCN Segmented Tabs */
+    div[data-testid="stTabs"] {
+        border-bottom: none !important;
     }
-    /* Explicitly preserve and enforce Material Symbols Rounded for Streamlit icons */
-    [data-testid="stIconMaterial"],
-    [data-testid*="stIcon"],
-    [data-testid*="Icon"],
-    [data-testid="stExpanderToggleIcon"],
-    [data-testid="stExpanderStepChevron"],
-    [data-testid="stExpanderStepIcon"],
-    [data-testid="stAlertDynamicIcon"],
-    .material-symbols-rounded,
-    .material-symbols-outlined,
-    .material-icons,
-    [class*="e1vmumty0"] {
-        font-family: "Material Symbols Rounded" !important;
-        font-weight: normal !important;
-        font-style: normal !important;
-        line-height: 1 !important;
-        letter-spacing: normal !important;
-        text-transform: none !important;
+
+    div[data-testid="stTabs"] > div:first-child {
+        background-color: #18181b !important;
+        border: 1px solid #27272a !important;
+        border-radius: 0.5rem !important;
+        padding: 4px !important;
+        gap: 4px !important;
         display: inline-flex !important;
-        white-space: nowrap !important;
-        word-wrap: normal !important;
-        direction: ltr !important;
-        -webkit-font-smoothing: antialiased !important;
-        text-rendering: optimizeLegibility !important;
-        font-feature-settings: 'liga' 1 !important;
-        -webkit-font-feature-settings: 'liga' 1 !important;
-        -moz-font-feature-settings: 'liga' 1 !important;
+        margin-bottom: 1rem !important;
     }
-    /* Neutral alerts: No decorative borders except error states */
-    div[data-testid="stAlert"] {
-        background-color: #161B22 !important;
-        color: #E6EDF3 !important;
-        border: 1px solid #30363D !important;
+
+    div[data-testid="stTabs"] button[role="tab"] {
+        background: transparent !important;
+        color: #a1a1aa !important;
+        border: none !important;
+        border-radius: 0.375rem !important;
+        padding: 6px 14px !important;
+        font-size: 0.875rem !important;
+        font-weight: 500 !important;
+        line-height: 1.25 !important;
+        transition: all 0.15s ease !important;
+        min-height: 32px !important;
     }
-    div[data-testid="stAlert"] p,
-    div[data-testid="stAlert"] div {
-        color: #E6EDF3 !important;
+
+    div[data-testid="stTabs"] button[role="tab"]:hover {
+        color: #fafafa !important;
+        background: rgba(255, 255, 255, 0.05) !important;
     }
-    div[data-testid="stAlert"] [data-testid="stIconMaterial"],
-    div[data-testid="stAlert"] [data-testid="stAlertDynamicIcon"],
-    div[data-testid="stAlert"] svg {
-        color: #E6EDF3 !important;
-        fill: #E6EDF3 !important;
+
+    div[data-testid="stTabs"] button[role="tab"][aria-selected="true"] {
+        background-color: #27272a !important;
+        color: #ffffff !important;
+        font-weight: 600 !important;
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.35) !important;
     }
-    /* Error state accent */
-    div[data-testid="stAlert"]:has([data-testid="stAlert-error"]) {
-        border-left: 3px solid #CF222E !important;
+
+    div[data-testid="stTabs"] [data-baseweb="tab-highlight"],
+    div[data-testid="stTabs"] [data-baseweb="tab-border"] {
+        display: none !important;
     }
-    /* Single accent color used only for primary actions */
+
+    /* ShadCN Primary Buttons */
     button[kind="primary"],
     [data-testid="stButton"] > button[kind="primary"],
     [data-testid="stFormSubmitButton"] > button[kind="primary"] {
-        background-color: #0969DA !important;
-        border-color: #0969DA !important;
-        color: #FFFFFF !important;
-    }
-    button[kind="primary"]:hover {
-        background-color: #0856B7 !important;
-        border-color: #0856B7 !important;
-    }
-    /* Touch Targets: Minimum 36px height & adequate padding for tabs and buttons */
-    button[data-baseweb="tab"],
-    [data-testid="stTabs"] button {
-        min-height: 36px !important;
+        background-color: #fafafa !important;
+        border: 1px solid #fafafa !important;
+        color: #09090b !important;
+        font-weight: 500 !important;
+        font-size: 0.875rem !important;
+        border-radius: 0.375rem !important;
         padding: 8px 16px !important;
-        font-size: 0.95rem !important;
-        line-height: 1.25 !important;
+        box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
+        transition: all 0.15s ease-in-out !important;
+        min-height: 36px !important;
     }
-    .stButton > button,
-    [data-testid="stButton"] > button,
-    [data-testid="stFormSubmitButton"] > button,
+
+    button[kind="primary"]:hover,
+    [data-testid="stButton"] > button[kind="primary"]:hover,
+    [data-testid="stFormSubmitButton"] > button[kind="primary"]:hover {
+        background-color: #e4e4e7 !important;
+        border-color: #e4e4e7 !important;
+        color: #09090b !important;
+    }
+
+    /* ShadCN Secondary / Outline Buttons */
+    button[kind="secondary"],
+    [data-testid="stButton"] > button:not([kind="primary"]),
+    [data-testid="stFormSubmitButton"] > button:not([kind="primary"]) {
+        background-color: #18181b !important;
+        border: 1px solid #27272a !important;
+        color: #f4f4f5 !important;
+        font-weight: 500 !important;
+        font-size: 0.875rem !important;
+        border-radius: 0.375rem !important;
+        padding: 8px 16px !important;
+        transition: all 0.15s ease-in-out !important;
+        min-height: 36px !important;
+    }
+
+    [data-testid="stButton"] > button:not([kind="primary"]):hover,
+    [data-testid="stFormSubmitButton"] > button:not([kind="primary"]):hover {
+        background-color: #27272a !important;
+        border-color: #3f3f46 !important;
+        color: #ffffff !important;
+    }
+
+    /* ShadCN Link Button */
     [data-testid="stLinkButton"] > a {
-        min-height: 36px !important;
+        background-color: transparent !important;
+        border: 1px solid #27272a !important;
+        color: #f4f4f5 !important;
+        border-radius: 0.375rem !important;
+        font-size: 0.875rem !important;
+        font-weight: 500 !important;
         padding: 8px 16px !important;
+        transition: all 0.15s ease !important;
+        min-height: 36px !important;
         display: inline-flex !important;
         align-items: center !important;
         justify-content: center !important;
-        font-size: 0.95rem !important;
+    }
+
+    [data-testid="stLinkButton"] > a:hover {
+        background-color: #18181b !important;
+        border-color: #3f3f46 !important;
+        color: #fafafa !important;
+    }
+
+    /* ShadCN Inputs, Textareas, Selectboxes */
+    input, textarea, [data-baseweb="select"] > div {
+        background-color: #09090b !important;
+        border: 1px solid #27272a !important;
+        border-radius: 0.375rem !important;
+        color: #f4f4f5 !important;
+        font-size: 0.875rem !important;
+    }
+
+    input:focus, textarea:focus, [data-baseweb="select"] > div:focus-within {
+        border-color: #71717a !important;
+        box-shadow: 0 0 0 1px #71717a !important;
+        outline: none !important;
+    }
+
+    /* ShadCN Card & Accordion (st.expander) */
+    div[data-testid="stExpander"] {
+        background-color: #09090b !important;
+        border: 1px solid #27272a !important;
+        border-radius: 0.5rem !important;
+        margin-bottom: 0.75rem !important;
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1) !important;
+        overflow: hidden !important;
+    }
+
+    div[data-testid="stExpander"] details {
+        border: none !important;
+    }
+
+    div[data-testid="stExpander"] summary {
+        background-color: #18181b !important;
+        border-bottom: 1px solid transparent !important;
+        padding: 0.75rem 1rem !important;
+        color: #f4f4f5 !important;
+        font-size: 0.925rem !important;
+        font-weight: 500 !important;
+        transition: background-color 0.15s ease !important;
+    }
+
+    div[data-testid="stExpander"] details[open] summary {
+        border-bottom: 1px solid #27272a !important;
+    }
+
+    div[data-testid="stExpander"] summary:hover {
+        background-color: #27272a !important;
+        color: #ffffff !important;
+    }
+
+    /* Sidebar */
+    [data-testid="stSidebar"] {
+        background-color: #09090b !important;
+        border-right: 1px solid #27272a !important;
+    }
+
+    /* ShadCN Card component classes */
+    .shadcn-card {
+        background-color: #18181b;
+        border: 1px solid #27272a;
+        border-radius: 0.5rem;
+        padding: 1.25rem 1.5rem;
+        box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+        transition: border-color 0.15s ease;
+    }
+    .shadcn-card:hover {
+        border-color: #3f3f46;
+    }
+    .shadcn-card-title {
+        font-size: 0.75rem;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: #a1a1aa;
+    }
+    .shadcn-card-value {
+        font-size: 1.75rem;
+        font-weight: 700;
+        letter-spacing: -0.025em;
+        color: #fafafa;
+        margin-top: 0.35rem;
+    }
+    .shadcn-card-desc {
+        font-size: 0.75rem;
+        color: #71717a;
+        margin-top: 0.25rem;
+    }
+
+    /* Monospace Code blocks */
+    code, pre, .stCode, [data-testid="stCodeBlock"] {
+        font-family: 'Geist Mono', ui-monospace, monospace !important;
+        background-color: #18181b !important;
+        border: 1px solid #27272a !important;
+        border-radius: 0.375rem !important;
+        color: #e4e4e7 !important;
+    }
+
+    /* Alerts */
+    div[data-testid="stAlert"] {
+        background-color: #18181b !important;
+        border: 1px solid #27272a !important;
+        border-radius: 0.5rem !important;
+        color: #f4f4f5 !important;
+        font-size: 0.875rem !important;
+    }
+    div[data-testid="stAlert"]:has([data-testid="stAlert-error"]) {
+        background-color: rgba(239, 68, 68, 0.08) !important;
+        border: 1px solid rgba(239, 68, 68, 0.3) !important;
+        color: #fca5a5 !important;
+    }
+    div[data-testid="stAlert"]:has([data-testid="stAlert-warning"]) {
+        background-color: rgba(245, 158, 11, 0.08) !important;
+        border: 1px solid rgba(245, 158, 11, 0.3) !important;
+        color: #fde68a !important;
+    }
+    div[data-testid="stAlert"]:has([data-testid="stAlert-info"]) {
+        background-color: rgba(39, 39, 42, 0.6) !important;
+        border: 1px solid #27272a !important;
+        color: #d4d4d8 !important;
+    }
+    div[data-testid="stAlert"]:has([data-testid="stAlert-success"]) {
+        background-color: rgba(34, 197, 94, 0.08) !important;
+        border: 1px solid rgba(34, 197, 94, 0.3) !important;
+        color: #86efac !important;
+    }
+
+    /* Material Symbols Rounded Icons */
+    [data-testid="stIconMaterial"], [data-testid*="stIcon"], [data-testid*="Icon"] {
+        font-family: "Material Symbols Rounded" !important;
+    }
+
+    /* Dividers */
+    hr {
+        border-color: #27272a !important;
+        margin: 1.25rem 0 !important;
     }
     </style>
     """,
     unsafe_allow_html=True,
 )
+
+
+def shadcn_badge(label: str, variant: str = "secondary") -> str:
+    """Renders a pixel-perfect ShadCN UI badge component."""
+    variants = {
+        "default": "background-color: #fafafa; color: #18181b; border: 1px solid #fafafa;",
+        "secondary": "background-color: #27272a; color: #f4f4f5; border: 1px solid #3f3f46;",
+        "outline": "background-color: transparent; color: #a1a1aa; border: 1px solid #27272a;",
+        "success": "background-color: rgba(34, 197, 94, 0.12); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.3);",
+        "warning": "background-color: rgba(245, 158, 11, 0.12); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3);",
+        "destructive": "background-color: rgba(239, 68, 68, 0.12); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3);",
+        "cloud": "background-color: rgba(56, 189, 248, 0.12); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3);",
+    }
+    style = variants.get(variant, variants["secondary"])
+    return (
+        f'<span style="display: inline-flex; align-items: center; border-radius: 9999px; '
+        f'padding: 2px 9px; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.02em; '
+        f'line-height: 1.4; {style}">{label}</span>'
+    )
+
 
 config = load_config()
 db = Database(config.db_path, config=config)
@@ -171,40 +377,81 @@ if dashboard_password:
 
 # Sidebar
 with st.sidebar:
-    st.header("Control panel")
-    st.markdown(f"**Sender:** {config.sender.name}")
-    st.markdown(f"**From:** `{config.sender.email}`")
-    st.markdown(f"**LLM Provider:** `{config.llm.provider.upper()}`")
+    st.markdown("""
+    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 1.25rem;">
+        <div style="width: 32px; height: 32px; border-radius: 8px; background: #fafafa; display: flex; align-items: center; justify-content: center; color: #09090b; font-weight: 700; font-size: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,0.3);">✦</div>
+        <div>
+            <div style="font-weight: 600; font-size: 1rem; color: #fafafa; letter-spacing: -0.02em; line-height: 1.2;">Outreach Studio</div>
+            <div style="font-size: 0.72rem; color: #a1a1aa;">ShadCN Intelligence Engine</div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Sender Card
+    st.markdown(f"""
+    <div class="shadcn-card" style="padding: 0.9rem 1.1rem; margin-bottom: 0.75rem;">
+        <div class="shadcn-card-title">Sender Identity</div>
+        <div style="font-weight: 600; font-size: 0.875rem; color: #fafafa; margin-top: 4px;">{config.sender.name}</div>
+        <div style="font-size: 0.75rem; color: #a1a1aa; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{config.sender.email}</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Database Status Card
     if db.is_supabase:
-        backend_display = "SUPABASE (Cloud)"
-        st.markdown(f"**Database:** `{backend_display}`")
+        db_badge = shadcn_badge("Connected", "cloud")
+        db_desc = "Supabase PostgreSQL"
     elif getattr(db, "supabase_schema_pending", False):
-        backend_display = "SQLITE (Local - Supabase schema pending)"
-        st.markdown(f"**Database:** `{backend_display}`")
+        db_badge = shadcn_badge("Pending", "warning")
+        db_desc = "SQLite Fallback"
+    else:
+        db_badge = shadcn_badge("Active", "secondary")
+        db_desc = "SQLite Local"
+
+    st.markdown(f"""
+    <div class="shadcn-card" style="padding: 0.9rem 1.1rem; margin-bottom: 0.75rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div class="shadcn-card-title">Database</div>
+            <div>{db_badge}</div>
+        </div>
+        <div style="font-size: 0.85rem; font-weight: 500; color: #f4f4f5; margin-top: 4px;">{db_desc}</div>
+        <div style="font-size: 0.72rem; color: #71717a; margin-top: 2px;">LLM Engine: {config.llm.provider.upper()}</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    if getattr(db, "supabase_schema_pending", False):
         with st.expander("⚡ Activate Supabase Cloud", expanded=False):
             st.caption(
                 "Credentials detected! Run `supabase_schema.sql` in your Supabase SQL Editor to initialize tables."
             )
-    else:
-        backend_display = "SQLITE (Local)"
-        st.markdown(f"**Database:** `{backend_display}`")
 
-
-    st.divider()
+    # Mode Toggle Card
+    st.markdown("""
+    <div class="shadcn-card-title" style="margin: 0.75rem 0 0.4rem 0;">Delivery Mode</div>
+    """, unsafe_allow_html=True)
     dry_run_active = st.toggle("Dry-run mode", value=config.dry_run)
     if dry_run_active:
-        st.info("Dry-run active. Sending simulated.")
+        st.caption("🔒 Simulated sending — safe for dry testing.")
     else:
-        st.warning("Live mode. Real emails will be sent.")
+        st.warning("⚡ Live mode — real emails will be dispatched.")
 
-    st.divider()
+    # Quota Progress Card
     today_count = db.get_today_sent_count()
     max_limit = config.limits.emails_per_day
-    st.metric("Sent today", f"{today_count} / {max_limit}")
-    st.progress(min(today_count / max(max_limit, 1), 1.0))
+    pct = min(today_count / max(max_limit, 1), 1.0)
+    st.markdown(f"""
+    <div class="shadcn-card" style="padding: 0.9rem 1.1rem; margin-top: 0.75rem; margin-bottom: 0.4rem;">
+        <div style="display: flex; justify-content: space-between; align-items: baseline;">
+            <div class="shadcn-card-title">Daily Quota</div>
+            <div style="font-weight: 700; font-size: 0.95rem; color: #fafafa;">{today_count} <span style="font-size: 0.75rem; color: #71717a; font-weight: 400;">/ {max_limit}</span></div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+    st.progress(pct)
 
-    st.divider()
-    st.subheader("Import contacts")
+    st.markdown("""
+    <div class="shadcn-card-title" style="margin: 1.25rem 0 0.4rem 0;">Import Leads</div>
+    """, unsafe_allow_html=True)
+
     uploaded_file = st.file_uploader(
         "Contacts file (.csv, .xlsx):",
         type=["csv", "xlsx", "xlsm"],
@@ -299,17 +546,75 @@ with st.sidebar:
 
 
 # Main Dashboard
-st.title("Outreach")
+all_contacts = load_all_contacts(db.backend_name, config.db_path)
+total_count = len(all_contacts)
+approved_count = sum(1 for c in all_contacts if c.status == ContactStatus.APPROVED)
+needs_review_count = sum(1 for c in all_contacts if c.status in (ContactStatus.READY_FOR_REVIEW, ContactStatus.NEEDS_MANUAL_REVIEW))
+flagged_count = sum(1 for c in all_contacts if (d := db.get_draft(c.id)) and d.status == DraftStatus.FLAGGED)
+sent_today = db.get_today_sent_count()
+limit_today = config.limits.emails_per_day
+
+# ShadCN Header
+col_h1, col_h2 = st.columns([3, 1])
+with col_h1:
+    st.markdown("""
+    <div style="margin-bottom: 0.75rem;">
+        <h1 style="font-size: 1.85rem; font-weight: 700; letter-spacing: -0.03em; margin: 0; color: #fafafa;">Outreach Studio</h1>
+        <p style="font-size: 0.875rem; color: #a1a1aa; margin: 0.25rem 0 0 0;">Autonomous prospect research, verified-fact personalization, and compliant cold messaging.</p>
+    </div>
+    """, unsafe_allow_html=True)
+with col_h2:
+    if db.is_supabase:
+        db_badge_top = shadcn_badge("Cloud Synced", "cloud")
+    else:
+        db_badge_top = shadcn_badge("Local Mode", "secondary")
+    st.markdown(f'<div style="text-align: right; padding-top: 0.5rem;">{db_badge_top}</div>', unsafe_allow_html=True)
+
+# ShadCN KPI Stat Cards
+kpi1, kpi2, kpi3, kpi4 = st.columns(4)
+with kpi1:
+    st.markdown(f"""
+    <div class="shadcn-card">
+        <div class="shadcn-card-title">Total Prospects</div>
+        <div class="shadcn-card-value">{total_count}</div>
+        <div class="shadcn-card-desc">Active in pipeline</div>
+    </div>
+    """, unsafe_allow_html=True)
+with kpi2:
+    st.markdown(f"""
+    <div class="shadcn-card">
+        <div class="shadcn-card-title">Awaiting Review</div>
+        <div class="shadcn-card-value">{needs_review_count}</div>
+        <div class="shadcn-card-desc">Drafts ready for signoff</div>
+    </div>
+    """, unsafe_allow_html=True)
+with kpi3:
+    flagged_color = "#fbbf24" if flagged_count > 0 else "#fafafa"
+    st.markdown(f"""
+    <div class="shadcn-card">
+        <div class="shadcn-card-title">Flagged Slop</div>
+        <div class="shadcn-card-value" style="color: {flagged_color};">{flagged_count}</div>
+        <div class="shadcn-card-desc">Failed safety checks</div>
+    </div>
+    """, unsafe_allow_html=True)
+with kpi4:
+    st.markdown(f"""
+    <div class="shadcn-card">
+        <div class="shadcn-card-title">Dispatched Today</div>
+        <div class="shadcn-card-value">{sent_today} <span style="font-size: 0.875rem; color: #71717a; font-weight: 400;">/ {limit_today}</span></div>
+        <div class="shadcn-card-desc">Daily quota limit</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+st.markdown("<div style='height: 14px;'></div>", unsafe_allow_html=True)
 
 # Navigation Tabs: Dossier and Drafts, Sent log, Follow-ups, Suppressed
 tab_drafts, tab_sent, tab_followups, tab_suppression = st.tabs(
-    ["Drafts", "Sent log", "Follow-ups", "Suppressed"]
+    ["Drafts", "Sent Log", "Follow-ups", "Suppression List"]
 )
 
 # ----------------- TAB 1: DRAFTS -----------------
 with tab_drafts:
-    st.header("Drafts")
-    all_contacts = load_all_contacts(db.backend_name, config.db_path)
     unprocessed_contacts = [c for c in all_contacts if not db.get_draft(c.id)]
 
     # Persistent toolbar container (prevents vertical layout shift on first load)
@@ -335,7 +640,7 @@ with tab_drafts:
 
     # Filter options
     status_filter = st.selectbox(
-        "Status:",
+        "Filter Prospects:",
         [
             "Pending actions",
             "FLAGGED",
@@ -363,26 +668,27 @@ with tab_drafts:
             filtered_contacts.append(c)
 
     if not filtered_contacts:
-        st.info("No contacts found.")
+        st.info("No contacts matching this filter.")
     else:
-        st.write(f"{len(filtered_contacts)} contacts")
+        st.caption(f"Showing {len(filtered_contacts)} prospects")
 
         for contact in filtered_contacts:
             dossier = db.get_dossier(contact.id)
             draft = db.get_draft(contact.id)
             is_flagged = bool(draft and draft.status == DraftStatus.FLAGGED)
-            flagged_badge = " [FLAGGED]" if is_flagged else ""
+            flagged_tag = " • [FLAGGED]" if is_flagged else ""
 
-            # Deterministic expander state (zero conditional page height shifts on load)
+            # Expander header
             with st.expander(
-                f"**{contact.full_name}** — {contact.job_title}, **{contact.company}** [{contact.status.value}]{flagged_badge}",
+                f"**{contact.full_name}** — {contact.job_title or 'Owner'}, **{contact.company}** [{contact.status.value}]{flagged_tag}",
                 expanded=False,
             ):
                 col_left, col_right = st.columns([1, 1])
 
+
                 # Left Column: Dossier
                 with col_left:
-                    st.subheader("Dossier")
+                    st.markdown("<div style='font-size: 0.78rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #a1a1aa; margin-bottom: 0.5rem;'>Verified Dossier</div>", unsafe_allow_html=True)
                     dossier_container = st.container(height=520)
                     with dossier_container:
                         dossier_box = st.empty()
@@ -431,7 +737,7 @@ with tab_drafts:
 
                 # Right Column: Drafts
                 with col_right:
-                    st.subheader("Drafts")
+                    st.markdown("<div style='font-size: 0.78rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #a1a1aa; margin-bottom: 0.5rem;'>Personalized Draft</div>", unsafe_allow_html=True)
                     drafts_container = st.container(height=520)
                     with drafts_container:
                         drafts_box = st.empty()
@@ -442,10 +748,16 @@ with tab_drafts:
                                 if is_flagged:
                                     st.error("Flagged: Draft failed validation or fact-grounding. Manual edit and approval required before sending.")
 
-                                # 1-Line Hook
-                                st.markdown(f"**Hook:**\n> *\"{draft.hook}\"*")
+                                # 1-Line Hook with ShadCN Callout styling
+                                st.markdown(f"""
+                                <div style="background-color: #18181b; border: 1px solid #27272a; border-left: 3px solid #fafafa; border-radius: 6px; padding: 10px 14px; margin-bottom: 12px;">
+                                    <div style="font-size: 0.7rem; font-weight: 600; text-transform: uppercase; color: #a1a1aa; letter-spacing: 0.05em;">Fact-Grounded Observation</div>
+                                    <div style="font-size: 0.875rem; color: #f4f4f5; margin-top: 4px; font-style: italic;">"{draft.hook}"</div>
+                                </div>
+                                """, unsafe_allow_html=True)
                                 if draft.source_facts:
-                                    st.caption(f"Source: {', '.join(draft.source_facts)}")
+                                    st.caption(f"Source facts: {', '.join(draft.source_facts)}")
+
 
                                 # Sub-tabs for LinkedIn vs Email
                                 tab_email, tab_li = st.tabs(["Email", "LinkedIn"])
@@ -541,33 +853,44 @@ with tab_drafts:
 
 # ----------------- TAB 2: SENT LOGS -----------------
 with tab_sent:
-    st.header("Sent log")
+    st.markdown("""
+    <div style="margin-bottom: 1rem;">
+        <h2 style="font-size: 1.25rem; font-weight: 600; color: #fafafa; margin: 0;">Dispatch Log</h2>
+        <p style="font-size: 0.825rem; color: #a1a1aa; margin: 0.2rem 0 0 0;">Audit record of all outreach attempts, simulated dry-runs, and live deliveries.</p>
+    </div>
+    """, unsafe_allow_html=True)
+
     logs = db.list_send_logs(limit=50)
     if not logs:
-        st.info("No logs.")
+        st.info("No dispatch logs recorded yet.")
     else:
         log_data = []
         for l in logs:
             log_data.append({
                 "ID": l.id,
                 "Recipient": l.recipient,
-                "Channel": l.channel,
+                "Channel": l.channel.upper(),
                 "Mode": "Dry-run" if l.is_dry_run else "Live",
                 "Status": l.status,
                 "Message ID": l.gmail_message_id or "-",
                 "Sent At": l.sent_at[:19],
                 "Error": l.error_message or "None",
             })
-        st.dataframe(log_data, width="stretch")
+        st.dataframe(log_data, use_container_width=True)
 
 
 # ----------------- TAB 3: FOLLOW-UPS -----------------
 with tab_followups:
-    st.header("Follow-ups")
+    st.markdown("""
+    <div style="margin-bottom: 1rem;">
+        <h2 style="font-size: 1.25rem; font-weight: 600; color: #fafafa; margin: 0;">Automated Follow-ups</h2>
+        <p style="font-size: 0.825rem; color: #a1a1aa; margin: 0.2rem 0 0 0;">Scheduled secondary touches for contacted prospects pending replies.</p>
+    </div>
+    """, unsafe_allow_html=True)
 
     contacts_for_fu = db.list_contacts(ContactStatus.EMAIL_SENT)
     if not contacts_for_fu:
-        st.info("No pending follow-ups.")
+        st.info("No pending follow-ups right now.")
     else:
         for contact in contacts_for_fu:
             draft = db.get_draft(contact.id)
@@ -593,15 +916,20 @@ with tab_followups:
 
 # ----------------- TAB 4: SUPPRESSION LIST -----------------
 with tab_suppression:
-    st.header("Suppressed")
+    st.markdown("""
+    <div style="margin-bottom: 1rem;">
+        <h2 style="font-size: 1.25rem; font-weight: 600; color: #fafafa; margin: 0;">Suppression List</h2>
+        <p style="font-size: 0.825rem; color: #a1a1aa; margin: 0.2rem 0 0 0;">Enforce strict opt-out compliance across all email and LinkedIn campaigns.</p>
+    </div>
+    """, unsafe_allow_html=True)
 
     with st.form("add_suppression_form"):
         col_s1, col_s2 = st.columns([2, 1])
         with col_s1:
-            sup_email = st.text_input("Email:")
+            sup_email = st.text_input("Email to suppress:")
         with col_s2:
-            sup_reason = st.text_input("Reason:", value="Opt-out")
-        add_sup = st.form_submit_button("Suppress email")
+            sup_reason = st.text_input("Reason:", value="Opt-out requested")
+        add_sup = st.form_submit_button("Add to Suppression")
         if add_sup and sup_email:
             suppression_mgr.suppress_contact(sup_email, reason=sup_reason)
             st.success(f"Suppressed {sup_email}.")
@@ -611,7 +939,8 @@ with tab_suppression:
     if suppressed:
         st.dataframe(
             [{"Email": s.email, "Reason": s.reason, "Opted Out At": s.opted_out_at[:19]} for s in suppressed],
-            width="stretch",
+            use_container_width=True,
         )
     else:
-        st.info("No suppressed emails.")
+        st.info("No suppressed emails recorded.")
+
