@@ -14,6 +14,9 @@ from src.sending.suppression import SuppressionManager
 logger = logging.getLogger(__name__)
 
 
+RESERVED_TEST_DOMAINS = (".example.com", ".example.org", ".test", ".invalid")
+
+
 class OutreachSender:
     def __init__(
         self,
@@ -40,6 +43,12 @@ class OutreachSender:
         """
         email = contact.email.strip().lower()
         is_dry_run = self.config.dry_run if force_dry_run is None else force_dry_run
+
+        # Check for disallowed test/example domains (RFC 2606)
+        if email.endswith(RESERVED_TEST_DOMAINS):
+            msg = f"Cannot send to {email}: Address belongs to a reserved test domain ({', '.join(RESERVED_TEST_DOMAINS)})."
+            logger.error(msg)
+            return False, msg
 
         # 0. Check if draft is flagged
         if draft.status == DraftStatus.FLAGGED:

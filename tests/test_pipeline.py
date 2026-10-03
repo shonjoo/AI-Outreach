@@ -8,7 +8,7 @@ from pathlib import Path
 
 from src.config import load_config
 from src.db.database import Database
-from src.db.models import Contact, ContactStatus, DraftStatus
+from src.db.models import Contact, ContactStatus, Draft, DraftStatus
 from src.generation.generator import DraftGenerator
 from src.generation.uniqueness import calculate_jaccard_similarity, check_batch_uniqueness
 from src.research.dossier import DossierBuilder
@@ -134,7 +134,7 @@ class TestOutreachPipeline(unittest.TestCase):
             first_name="Elena",
             last_name="Vance",
             company="Apex Smile Dental Care",
-            email="elena@apexsmiledental.example.com",
+            email="elena@apexsmiledental.com",
             notes="No online booking",
         )
         cid = self.db.insert_contact(contact)
@@ -153,7 +153,7 @@ class TestOutreachPipeline(unittest.TestCase):
         # Verify DB logged the send
         logs = self.db.list_send_logs()
         self.assertEqual(len(logs), 1)
-        self.assertEqual(logs[0].recipient, "elena@apexsmiledental.example.com")
+        self.assertEqual(logs[0].recipient, "elena@apexsmiledental.com")
         self.assertTrue(logs[0].is_dry_run)
 
         # 2. Duplicate Protection Check
@@ -166,15 +166,42 @@ class TestOutreachPipeline(unittest.TestCase):
             first_name="Blocked",
             last_name="User",
             company="Blocked Co",
-            email="optout@example.com",
+            email="optout@customdomain.com",
         )
         cid2 = self.db.insert_contact(contact2)
         contact2.id = cid2
-        self.suppression.suppress_contact("optout@example.com")
+        self.suppression.suppress_contact("optout@customdomain.com")
 
         success_sup, msg_sup = self.sender.send_approved_email(contact2, draft, force_dry_run=True, respect_delay=False)
         self.assertFalse(success_sup)
         self.assertIn("suppression", msg_sup)
+
+    def test_08_refuses_reserved_test_domains(self):
+        """Verify sender refuses addresses ending in .example.com, .example.org, .test, .invalid."""
+        from src.sending.sender import RESERVED_TEST_DOMAINS
+        disallowed_emails = [
+            "lead@company.example.com",
+            "founder@startup.example.org",
+            "qa@sandbox.test",
+            "user@null.invalid",
+        ]
+        for bad_email in disallowed_emails:
+            bad_contact = Contact(
+                first_name="Test",
+                last_name="User",
+                company="Test Co",
+                email=bad_email,
+            )
+            fake_draft = Draft(
+                contact_id=1,
+                hook="Test hook",
+                email_subject="Quick question",
+                email_body="Hello, this is a test email.",
+                status=DraftStatus.APPROVED,
+            )
+            success, msg = self.sender.send_approved_email(bad_contact, fake_draft, force_dry_run=True, respect_delay=False)
+            self.assertFalse(success, f"Expected send to fail for {bad_email}")
+            self.assertIn("reserved test domain", msg)
 
     def test_07_opt_out_footer_appended(self):
         """Verify CAN-SPAM/GDPR compliance footer."""
