@@ -34,7 +34,32 @@ st.set_page_config(
 st.markdown(
     """
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500;600&family=Inter:wght@300;400;500;600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+    /* ==========================================================================
+       FIGMA DESIGN SYSTEM SPECIFICATION (Zinc / Charcoal Dark Palette)
+       - 8pt Spatial Grid (8px, 16px, 24px, 32px padding/margins)
+       - Standardized Radii: Small (6px), Medium (8px), Large (12px), Full (9999px)
+       - Strict Typography Hierarchy: 12px captions, 14px body, 16px headings/titles, 24px/32px displays
+       - Color Tokens: Surface-0 (#09090b), Surface-1 (#121215), Surface-2 (#18181b), Border (#27272a)
+       ========================================================================== */
+
+    :root {
+        --figma-bg-primary: #09090b;
+        --figma-bg-surface: #18181b;
+        --figma-bg-surface-elevated: #27272a;
+        --figma-border: #27272a;
+        --figma-border-subtle: #1e1e22;
+        --figma-border-hover: #3f3f46;
+        --figma-text-primary: #fafafa;
+        --figma-text-secondary: #a1a1aa;
+        --figma-text-muted: #71717a;
+        --figma-radius-sm: 6px;
+        --figma-radius-md: 8px;
+        --figma-radius-lg: 12px;
+        --figma-font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        --figma-font-mono: 'JetBrains Mono', monospace;
+    }
 
     /* Global Typography & Canvas */
     html, body,
@@ -46,32 +71,55 @@ st.markdown(
     .stMarkdown,
     h1, h2, h3, h4, h5, h6,
     p, label, input, button, select, textarea {
-        font-family: 'Geist', 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+        font-family: var(--figma-font-sans) !important;
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
+        text-rendering: optimizeLegibility;
     }
 
     div[data-testid="stAppViewContainer"] {
-        background-color: #09090b !important;
+        background-color: var(--figma-bg-primary) !important;
         color: #f4f4f5 !important;
     }
 
+    div[data-testid="stAppViewBlockContainer"] {
+        max-width: 1280px !important;
+        padding-top: 2rem !important;
+        padding-bottom: 3.5rem !important;
+    }
+
     div[data-testid="stHeader"] {
-        background-color: rgba(9, 9, 11, 0.75) !important;
-        backdrop-filter: blur(12px) !important;
-        border-bottom: 1px solid #27272a !important;
+        background-color: rgba(9, 9, 11, 0.8) !important;
+        backdrop-filter: blur(16px) !important;
+        border-bottom: 1px solid var(--figma-border) !important;
     }
 
-    /* Headings */
-    h1, h2, h3, h4, h5, h6 {
-        color: #fafafa !important;
-        letter-spacing: -0.025em !important;
+    /* Headings - Figma Text Hierarchy */
+    h1 {
+        font-size: 1.75rem !important;
+        font-weight: 700 !important;
+        letter-spacing: -0.035em !important;
+        color: var(--figma-text-primary) !important;
+        line-height: 1.25 !important;
+    }
+
+    h2 {
+        font-size: 1.25rem !important;
         font-weight: 600 !important;
+        letter-spacing: -0.025em !important;
+        color: var(--figma-text-primary) !important;
+        line-height: 1.3 !important;
     }
 
-    /* Layout Containment */
-    div[data-testid="stVerticalBlock"] > div:has(> div[data-testid="stContainer"]) {
-        contain: layout;
+    h3 {
+        font-size: 1rem !important;
+        font-weight: 600 !important;
+        letter-spacing: -0.015em !important;
+        color: var(--figma-text-primary) !important;
+    }
+
+    p, span, div {
+        letter-spacing: -0.01em;
     }
 
     /* Universal Interactive Clickable Targets */
@@ -88,36 +136,37 @@ st.markdown(
     .shadcn-badge,
     a {
         cursor: pointer !important;
+        user-select: none;
     }
 
-    /* ShadCN Segmented Tabs */
+    /* Figma Segmented Controls / Tab Bars */
     div[data-testid="stTabs"] {
         border-bottom: none !important;
     }
 
     div[data-testid="stTabs"] > div:first-child {
-        background-color: #18181b !important;
-        border: 1px solid #27272a !important;
-        border-radius: 0.5rem !important;
-        padding: 4px !important;
-        gap: 4px !important;
+        background-color: #121215 !important;
+        border: 1px solid var(--figma-border) !important;
+        border-radius: var(--figma-radius-md) !important;
+        padding: 3px !important;
+        gap: 3px !important;
         display: inline-flex !important;
-        margin-bottom: 1rem !important;
+        margin-bottom: 1.25rem !important;
     }
 
     div[data-testid="stTabs"] button[role="tab"] {
         background: transparent !important;
-        color: #a1a1aa !important;
+        color: var(--figma-text-secondary) !important;
         border: none !important;
-        border-radius: 0.375rem !important;
+        border-radius: var(--figma-radius-sm) !important;
         padding: 6px 14px !important;
-        font-size: 0.875rem !important;
+        font-size: 0.8125rem !important;
         font-weight: 500 !important;
         line-height: 1.25 !important;
-        transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
-        min-height: 32px !important;
-        will-change: transform, background-color, color;
+        transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1) !important;
+        min-height: 30px !important;
     }
+
 
     div[data-testid="stTabs"] button[role="tab"]:hover {
         color: #fafafa !important;
@@ -312,74 +361,74 @@ st.markdown(
     }
 
     div[data-testid="stExpander"] summary {
-        background-color: #18181b !important;
+        background-color: var(--figma-bg-surface) !important;
         border-bottom: 1px solid transparent !important;
         padding: 0.75rem 1rem !important;
         color: #f4f4f5 !important;
-        font-size: 0.925rem !important;
+        font-size: 0.875rem !important;
         font-weight: 500 !important;
-        transition: background-color 0.2s cubic-bezier(0.16, 1, 0.3, 1), color 0.2s ease !important;
+        transition: background-color 0.15s ease, color 0.15s ease !important;
         cursor: pointer !important;
     }
 
     div[data-testid="stExpander"] details[open] summary {
-        border-bottom: 1px solid #27272a !important;
+        border-bottom: 1px solid var(--figma-border) !important;
     }
 
     div[data-testid="stExpander"] summary:hover {
-        background-color: #222226 !important;
+        background-color: #202024 !important;
         color: #ffffff !important;
     }
 
     div[data-testid="stExpander"] summary:active {
-        background-color: #27272a !important;
-        transform: scale(0.997) !important;
+        background-color: var(--figma-bg-surface-elevated) !important;
     }
 
     div[data-testid="stExpander"] summary svg {
-        transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+        transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
     }
 
-    /* Sidebar */
+    /* Sidebar - Figma Workspace Pane */
     [data-testid="stSidebar"] {
-        background-color: #09090b !important;
-        border-right: 1px solid #27272a !important;
+        background-color: var(--figma-bg-primary) !important;
+        border-right: 1px solid var(--figma-border) !important;
     }
 
-    /* ShadCN Card component classes */
+    /* Figma Component: Surface Cards */
     .shadcn-card {
-        background-color: #18181b;
-        border: 1px solid #27272a;
-        border-radius: 0.5rem;
-        padding: 1.25rem 1.5rem;
-        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.15);
-        transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1),
-                    border-color 0.22s ease,
-                    box-shadow 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+        background-color: var(--figma-bg-surface);
+        border: 1px solid var(--figma-border);
+        border-radius: var(--figma-radius-md);
+        padding: 1rem 1.25rem;
+        box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.2);
+        transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1),
+                    border-color 0.18s ease,
+                    box-shadow 0.18s cubic-bezier(0.16, 1, 0.3, 1);
         will-change: transform, box-shadow, border-color;
     }
     .shadcn-card:hover {
-        border-color: #3f3f46;
-        transform: translateY(-2.5px);
-        box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.45);
+        border-color: var(--figma-border-hover);
+        transform: translateY(-2px);
+        box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.4);
     }
     .shadcn-card-title {
-        font-size: 0.75rem;
-        font-weight: 500;
+        font-size: 0.6875rem;
+        font-weight: 600;
         text-transform: uppercase;
-        letter-spacing: 0.05em;
-        color: #a1a1aa;
+        letter-spacing: 0.06em;
+        color: var(--figma-text-muted);
     }
     .shadcn-card-value {
-        font-size: 1.75rem;
+        font-size: 1.5rem;
         font-weight: 700;
-        letter-spacing: -0.025em;
-        color: #fafafa;
-        margin-top: 0.35rem;
+        letter-spacing: -0.03em;
+        color: var(--figma-text-primary);
+        margin-top: 0.25rem;
+        line-height: 1.2;
     }
     .shadcn-card-desc {
         font-size: 0.75rem;
-        color: #71717a;
+        color: var(--figma-text-muted);
         margin-top: 0.25rem;
     }
 
