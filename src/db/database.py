@@ -146,6 +146,7 @@ class Database(BaseDatabase):
                     hook TEXT NOT NULL,
                     linkedin_note TEXT,
                     linkedin_message TEXT,
+                    whatsapp_message TEXT,
                     email_subject TEXT NOT NULL,
                     email_subject_alt1 TEXT,
                     email_subject_alt2 TEXT,
@@ -188,6 +189,11 @@ class Database(BaseDatabase):
                 );
                 """
             )
+            # Safe migration for existing SQLite files
+            try:
+                conn.execute("ALTER TABLE drafts ADD COLUMN whatsapp_message TEXT;")
+            except Exception:
+                pass
 
     # ------------------ Contacts ------------------
 
@@ -394,14 +400,15 @@ class Database(BaseDatabase):
             cursor.execute(
                 """
                 INSERT INTO drafts
-                (contact_id, hook, linkedin_note, linkedin_message, email_subject,
+                (contact_id, hook, linkedin_note, linkedin_message, whatsapp_message, email_subject,
                  email_subject_alt1, email_subject_alt2, email_body, followup_subject,
                  followup_body, source_facts, status, version, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(contact_id) DO UPDATE SET
                     hook=excluded.hook,
                     linkedin_note=excluded.linkedin_note,
                     linkedin_message=excluded.linkedin_message,
+                    whatsapp_message=excluded.whatsapp_message,
                     email_subject=excluded.email_subject,
                     email_subject_alt1=excluded.email_subject_alt1,
                     email_subject_alt2=excluded.email_subject_alt2,
@@ -419,6 +426,7 @@ class Database(BaseDatabase):
                     draft.hook,
                     draft.linkedin_note,
                     draft.linkedin_message,
+                    draft.whatsapp_message,
                     draft.email_subject,
                     draft.email_subject_alt1,
                     draft.email_subject_alt2,
@@ -444,12 +452,14 @@ class Database(BaseDatabase):
             cursor.execute("SELECT * FROM drafts WHERE contact_id = ?", (contact_id,))
             row = cursor.fetchone()
             if row:
+                wa_msg = row["whatsapp_message"] if "whatsapp_message" in row.keys() else ""
                 return Draft(
                     id=row["id"],
                     contact_id=row["contact_id"],
                     hook=row["hook"],
                     linkedin_note=row["linkedin_note"] or "",
                     linkedin_message=row["linkedin_message"] or "",
+                    whatsapp_message=wa_msg or "",
                     email_subject=row["email_subject"] or "",
                     email_subject_alt1=row["email_subject_alt1"] or "",
                     email_subject_alt2=row["email_subject_alt2"] or "",
@@ -484,10 +494,11 @@ class Database(BaseDatabase):
         linkedin_note: str,
         linkedin_message: str,
         status: DraftStatus = DraftStatus.EDITED,
+        whatsapp_message: str = "",
     ):
         if self._backend:
             return self._backend.update_draft_content(
-                draft_id, hook, email_subject, email_body, linkedin_note, linkedin_message, status
+                draft_id, hook, email_subject, email_body, linkedin_note, linkedin_message, status, whatsapp_message
             )
 
         now = datetime.utcnow().isoformat()
@@ -496,7 +507,7 @@ class Database(BaseDatabase):
                 """
                 UPDATE drafts 
                 SET hook = ?, email_subject = ?, email_body = ?, 
-                    linkedin_note = ?, linkedin_message = ?, 
+                    linkedin_note = ?, linkedin_message = ?, whatsapp_message = ?,
                     status = ?, updated_at = ?
                 WHERE id = ?
                 """,
@@ -506,6 +517,7 @@ class Database(BaseDatabase):
                     email_body,
                     linkedin_note,
                     linkedin_message,
+                    whatsapp_message,
                     status.value,
                     now,
                     draft_id,

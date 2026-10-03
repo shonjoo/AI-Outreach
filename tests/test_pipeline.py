@@ -215,6 +215,125 @@ class TestOutreachPipeline(unittest.TestCase):
         self.assertIn("nillohitfreelanceco@gmail.com", final)
         self.assertIn("unsubscribe", final)
 
+    def test_09_starter_lead_list_excel_import(self):
+        """Verify Starter-Lead-List.xlsx columns map cleanly into Contact model."""
+        import openpyxl
+        from src.db.csv_importer import parse_any_lead_file
+
+        excel_path = os.path.join(self.test_dir, "Starter-Lead-List.xlsx")
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "Leads"
+        headers = ["Business", "Type", "Area", "Priority", "Website Status", "Rating", "Reviews", "Phone", "Maps Link"]
+        ws.append(headers)
+        ws.append([
+            "Dr. Bright Dental Clinic",
+            "Dental Clinic",
+            "Indiranagar, Bangalore",
+            "High",
+            "No website",
+            4.9,
+            142,
+            "+91 98765 43210",
+            "https://maps.google.com/?cid=99887766",
+        ])
+        ws.append([
+            "Velvet Glow Hair Studio",
+            "Salon & Spa",
+            "Koramangala, Bangalore",
+            "Medium",
+            "No website",
+            4.7,
+            88,
+            "+91 91234 56789",
+            "https://maps.google.com/?cid=11223344",
+        ])
+        wb.save(excel_path)
+
+        with open(excel_path, "rb") as f:
+            file_bytes = f.read()
+
+        contacts, errors, meta = parse_any_lead_file(file_bytes, "Starter-Lead-List.xlsx")
+        self.assertEqual(len(contacts), 2)
+        self.assertEqual(len(errors), 0)
+
+        c1 = contacts[0]
+        self.assertEqual(c1.company, "Dr. Bright Dental Clinic")
+        self.assertEqual(c1.job_title, "Dental Clinic")
+        self.assertEqual(c1.linkedin_url, "https://maps.google.com/?cid=99887766")
+        self.assertTrue(c1.email.endswith("@local-lead.local"))
+        self.assertIn("Area: Indiranagar, Bangalore", c1.notes)
+        self.assertIn("Rating: 4.9", c1.notes)
+        self.assertIn("Reviews: 142", c1.notes)
+        self.assertIn("Phone: +91 98765 43210", c1.notes)
+        self.assertIn("Priority: High", c1.notes)
+
+        # Test SQLite insertion
+        cid = self.db.insert_contact(c1)
+        saved = self.db.get_contact(cid)
+        self.assertEqual(saved.company, "Dr. Bright Dental Clinic")
+        self.assertEqual(saved.status, ContactStatus.PENDING_RESEARCH)
+
+    def test_10_google_maps_fallback_research(self):
+        """Verify Google Maps fallback extracts facts and opportunities when no website exists."""
+        contact = Contact(
+            id=10,
+            first_name="there",
+            last_name="",
+            company="Velvet Glow Hair Studio",
+            job_title="Salon & Spa",
+            linkedin_url="https://maps.google.com/?cid=11223344",
+            email="phone_919123456789@local-lead.local",
+            notes="Area: Koramangala | Priority: High | Website Status: No website | Rating: 4.7 (88 reviews) | Phone: +91 91234 56789",
+        )
+        dossier = self.builder.build_dossier(contact)
+        self.assertTrue(dossier.has_strong_hook)
+        self.assertTrue(any("4.7" in f or "88" in f or "maps" in f.lower() or "google" in f.lower() for f in dossier.verifiable_facts))
+        self.assertTrue(len(dossier.detected_opportunities) > 0)
+        self.assertIn("No active official website listed", dossier.website_summary)
+
+    def test_11_whatsapp_draft_variant_generation(self):
+        """Verify WhatsApp draft is generated, strictly under 50 words, and persists in DB."""
+        contact = Contact(
+            id=11,
+            first_name="there",
+            company="Dr. Bright Dental Clinic",
+            job_title="Dental Clinic",
+            email="phone_919876543210@local-lead.local",
+            notes="Area: Indiranagar | Website Status: No website | Rating: 4.9 (142 reviews)",
+        )
+        cid = self.db.insert_contact(contact)
+        contact.id = cid
+
+        dossier = self.builder.build_dossier(contact)
+        self.db.save_dossier(dossier)
+
+        draft = self.generator.generate_for_contact(contact, dossier)
+
+        # Check WhatsApp message exists and is <= 50 words
+        self.assertTrue(bool(draft.whatsapp_message))
+        wa_words = len(draft.whatsapp_message.split())
+        self.assertLessEqual(wa_words, 50, f"WhatsApp message exceeded 50 words: {wa_words} words: {draft.whatsapp_message}")
+
+        # Check DB round-trip persistence
+        draft_id = self.db.save_draft(draft)
+        retrieved_draft = self.db.get_draft(cid)
+        self.assertEqual(retrieved_draft.whatsapp_message, draft.whatsapp_message)
+
+        # Test update_draft_content
+        edited_wa = "Hey team, loved your 4.9-star reviews in Indiranagar! Quick 2-min chat about setting up automated booking? Let me know!"
+        self.db.update_draft_content(
+            draft_id=draft_id,
+            hook=draft.hook,
+            email_subject=draft.email_subject,
+            email_body=draft.email_body,
+            linkedin_note=draft.linkedin_note,
+            linkedin_message=draft.linkedin_message,
+            whatsapp_message=edited_wa,
+        )
+        updated_draft = self.db.get_draft(cid)
+        self.assertEqual(updated_draft.whatsapp_message, edited_wa)
+
 
 if __name__ == "__main__":
     unittest.main()

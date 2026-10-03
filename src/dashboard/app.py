@@ -2,7 +2,9 @@
 
 import csv
 import io
+import re
 import sys
+import urllib.parse
 from pathlib import Path
 
 # Add project root to sys.path
@@ -853,10 +855,18 @@ with tab_drafts:
                         with dossier_box.container():
                             if contact.email.endswith("@linkedin-lead.local"):
                                 st.markdown("**Email:** *Not provided in sheet (LinkedIn outreach)*")
+                            elif contact.email.endswith("@local-lead.local"):
+                                st.markdown("**Email:** *Not provided in sheet (Local Lead - WhatsApp/Phone)*")
                             else:
                                 st.markdown(f"**Email:** `{contact.email}`")
                             if contact.linkedin_url:
-                                st.markdown(f"**LinkedIn:** [{contact.linkedin_url}]({contact.linkedin_url})")
+                                if "google.com/maps" in contact.linkedin_url or "maps.google" in contact.linkedin_url or "goo.gl" in contact.linkedin_url:
+                                    st.markdown(f"**Google Maps:** [{contact.linkedin_url}]({contact.linkedin_url})")
+                                else:
+                                    st.markdown(f"**LinkedIn:** [{contact.linkedin_url}]({contact.linkedin_url})")
+                            if contact.notes:
+                                with st.expander("Lead Details & Notes", expanded=False):
+                                    st.text(contact.notes)
 
                             if dossier:
                                 if dossier.website_url:
@@ -917,8 +927,8 @@ with tab_drafts:
                                     st.caption(f"Source facts: {', '.join(draft.source_facts)}")
 
 
-                                # Sub-tabs for LinkedIn vs Email
-                                tab_email, tab_li = st.tabs(["Email", "LinkedIn"])
+                                # Sub-tabs for Channels
+                                tab_email, tab_wa, tab_li = st.tabs(["Email", "WhatsApp", "LinkedIn"])
 
                                 with tab_email:
                                     st.markdown(f"**Subject:** `{draft.email_subject}`")
@@ -947,6 +957,7 @@ with tab_drafts:
                                                 email_body=editable_body,
                                                 linkedin_note=draft.linkedin_note,
                                                 linkedin_message=draft.linkedin_message,
+                                                whatsapp_message=draft.whatsapp_message,
                                                 status=DraftStatus.EDITED,
                                             )
                                             load_all_contacts.clear()
@@ -983,6 +994,57 @@ with tab_drafts:
                                             db.update_contact_status(contact.id, ContactStatus.SKIPPED)
                                             load_all_contacts.clear()
                                             st.info("Skipped.")
+                                            st.rerun()
+
+                                with tab_wa:
+                                    st.markdown("Short, casual, friendly mobile message for local owners (< 50 words).")
+                                    editable_wa = st.text_area(
+                                        "Message:",
+                                        value=draft.whatsapp_message,
+                                        height=120,
+                                        key=f"wa_body_{contact.id}",
+                                    )
+                                    wa_words = len(editable_wa.split()) if editable_wa else 0
+                                    if wa_words > 50:
+                                        st.warning(f"Word count: {wa_words}/50 words (exceeds 50-word limit)")
+                                    else:
+                                        st.caption(f"Word count: {wa_words} / 50 words")
+
+                                    # Parse phone from notes
+                                    phone_match = re.search(r"Phone:\s*([+0-9\s\-()]+)", contact.notes or "")
+                                    phone_val = phone_match.group(1).strip() if phone_match else ""
+                                    clean_phone = re.sub(r"[^\d+]", "", phone_val).lstrip("+")
+
+                                    col_w1, col_w2, col_w3 = st.columns(3)
+                                    with col_w1:
+                                        if st.button("Save", key=f"save_wa_{contact.id}"):
+                                            db.update_draft_content(
+                                                draft_id=draft.id,
+                                                hook=draft.hook,
+                                                email_subject=draft.email_subject,
+                                                email_body=draft.email_body,
+                                                linkedin_note=draft.linkedin_note,
+                                                linkedin_message=draft.linkedin_message,
+                                                whatsapp_message=editable_wa,
+                                                status=DraftStatus.EDITED,
+                                            )
+                                            load_all_contacts.clear()
+                                            st.success("Saved.")
+                                            st.rerun()
+
+                                    with col_w2:
+                                        if clean_phone:
+                                            encoded_msg = urllib.parse.quote(editable_wa or "")
+                                            wa_url = f"https://wa.me/{clean_phone}?text={encoded_msg}"
+                                            st.link_button(f"Open WhatsApp Web ({clean_phone})", wa_url)
+                                        else:
+                                            st.caption("No phone found in lead details.")
+
+                                    with col_w3:
+                                        if st.button("Mark sent", key=f"mark_wa_{contact.id}"):
+                                            db.update_contact_status(contact.id, ContactStatus.WHATSAPP_SENT)
+                                            load_all_contacts.clear()
+                                            st.success("Marked as WhatsApp sent.")
                                             st.rerun()
 
                                 with tab_li:

@@ -52,6 +52,7 @@ CREATE TABLE IF NOT EXISTS public.drafts (
     hook TEXT NOT NULL,
     linkedin_note TEXT,
     linkedin_message TEXT,
+    whatsapp_message TEXT,
     email_subject TEXT NOT NULL,
     email_subject_alt1 TEXT,
     email_subject_alt2 TEXT,
@@ -64,6 +65,8 @@ CREATE TABLE IF NOT EXISTS public.drafts (
     created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
 );
+
+ALTER TABLE public.drafts ADD COLUMN IF NOT EXISTS whatsapp_message TEXT;
 
 CREATE INDEX IF NOT EXISTS idx_drafts_contact_id ON public.drafts (contact_id);
 CREATE INDEX IF NOT EXISTS idx_drafts_status ON public.drafts (status);

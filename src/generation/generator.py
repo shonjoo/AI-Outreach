@@ -91,11 +91,23 @@ class DraftGenerator:
             draft_status = DraftStatus.PENDING
             contact_status = ContactStatus.READY_FOR_REVIEW
 
+        # Extract WhatsApp message or build friendly local fallback under 50 words
+        wa_msg = result.get("whatsapp_message", "").strip()
+        if not wa_msg:
+            clean_first = contact.first_name if contact.first_name and contact.first_name.lower() != "there" else ""
+            greeting = f"Hey {clean_first}" if clean_first else "Hey there"
+            wa_msg = f"{greeting}! Loved seeing {contact.company} on Maps. Noticed you don't have an online booking link yet—I built a simple 1-click booking tool for local businesses. Mind if I share a 30-sec preview?"
+        # Ensure under 50 words
+        wa_words = wa_msg.split()
+        if len(wa_words) > 50:
+            wa_msg = " ".join(wa_words[:48]) + "..."
+
         draft = Draft(
             contact_id=contact.id or 0,
             hook=hook,
             linkedin_note=result.get("linkedin_note", ""),
             linkedin_message=result.get("linkedin_message", ""),
+            whatsapp_message=wa_msg,
             email_subject=result.get("email_subject", f"Question regarding {contact.company}"),
             email_subject_alt1=result.get("email_subject_alt1", ""),
             email_subject_alt2=result.get("email_subject_alt2", ""),

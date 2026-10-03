@@ -13,11 +13,11 @@ HEADER_ALIASES = {
     "last_name": ["last_name", "lastname", "last", "lname", "surname"],
     "full_name": ["full_name", "fullname", "name", "contact_name", "contactname", "person_name"],
     "company": ["company", "company_name", "companyname", "business", "business_name", "businessname", "organization", "org"],
-    "job_title": ["job_title", "jobtitle", "title", "position", "role", "designation", "occupation"],
+    "job_title": ["job_title", "jobtitle", "title", "position", "role", "designation", "occupation", "type", "business_type", "category", "niche"],
     "email": ["email", "email_address", "emailaddress", "mail", "contact_email", "contactemail", "email_id", "emailid", "work_email"],
-    "linkedin_url": ["linkedin_url", "linkedin", "linkedinurl", "linkedin_profile", "linkedinprofile", "profile_url", "linkedin_link", "person_linkedin_url"],
+    "linkedin_url": ["linkedin_url", "linkedin", "linkedinurl", "linkedin_profile", "linkedinprofile", "profile_url", "linkedin_link", "person_linkedin_url", "maps_link", "maps", "mapslink", "google_maps", "google_maps_link", "map_link"],
     "notes": ["notes", "note", "title_match", "comments", "description", "details", "info", "context", "memo"],
-    "website": ["website", "url", "web", "website_url", "site", "domain", "company_website", "link"],
+    "website": ["website", "url", "web", "website_url", "site", "domain", "company_website", "link", "website_status", "web_status"],
 }
 
 
@@ -126,10 +126,32 @@ def parse_rows_into_contacts(headers: List[str], data_rows: List[List[any]]) -> 
         if not fn and not comp and not raw_email:
             continue
 
-        # If email is missing, generate unique placeholder for LinkedIn tracking
+        # Collect metadata from any unmapped local business columns (Area, Rating, Reviews, Phone, Priority, etc.)
+        meta_items = []
+        phone_found = ""
+        for h in headers:
+            clean_h = clean_key(h)
+            val = get_val(row, h)
+            if not val:
+                continue
+            if clean_h in ["phone", "phonenumber", "telephone", "mobile", "contact_number"]:
+                phone_found = val
+            # Include informative metadata columns (Area, Rating, Reviews, Phone, Priority, Website Status, etc.)
+            if clean_h not in [clean_key(col_map.get(k) or "") for k in ["company", "full_name", "first_name", "last_name", "email"]]:
+                meta_items.append(f"{h}: {val}")
+
+        if meta_items:
+            extra_meta_str = " | ".join(meta_items)
+            notes = f"{notes} | {extra_meta_str}".strip(" |") if notes else extra_meta_str
+
+        # If email is missing, generate unique local/phone placeholder
         if not raw_email or "@" not in raw_email:
-            ident = li_url or f"{fn}_{comp}"
-            raw_email = f"li_{abs(hash(ident)) % 100000000}@linkedin-lead.local"
+            if phone_found:
+                clean_phone = re.sub(r"[^0-9]", "", phone_found)
+                raw_email = f"phone_{clean_phone or abs(hash(comp))}@local-lead.local"
+            else:
+                ident = li_url or f"{fn}_{comp}"
+                raw_email = f"local_{abs(hash(ident)) % 100000000}@local-lead.local"
 
         contact = Contact(
             first_name=fn or "there",

@@ -217,6 +217,7 @@ class SupabaseDatabase(BaseDatabase):
             "hook": draft.hook,
             "linkedin_note": draft.linkedin_note,
             "linkedin_message": draft.linkedin_message,
+            "whatsapp_message": getattr(draft, "whatsapp_message", ""),
             "email_subject": draft.email_subject,
             "email_subject_alt1": draft.email_subject_alt1,
             "email_subject_alt2": draft.email_subject_alt2,
@@ -238,11 +239,26 @@ class SupabaseDatabase(BaseDatabase):
         )
         if existing.data:
             draft_id = existing.data[0]["id"]
-            self.client.table("drafts").update(payload).eq("id", draft_id).execute()
+            try:
+                self.client.table("drafts").update(payload).eq("id", draft_id).execute()
+            except Exception as e:
+                if "whatsapp_message" in str(e).lower():
+                    payload.pop("whatsapp_message", None)
+                    self.client.table("drafts").update(payload).eq("id", draft_id).execute()
+                else:
+                    raise
             return int(draft_id)
 
         payload["created_at"] = now
-        res = self.client.table("drafts").insert(payload).execute()
+        try:
+            res = self.client.table("drafts").insert(payload).execute()
+        except Exception as e:
+            if "whatsapp_message" in str(e).lower():
+                payload.pop("whatsapp_message", None)
+                res = self.client.table("drafts").insert(payload).execute()
+            else:
+                raise
+
         if res.data:
             return int(res.data[0]["id"])
         raise RuntimeError("Failed to insert draft into Supabase.")
@@ -264,6 +280,7 @@ class SupabaseDatabase(BaseDatabase):
             hook=row["hook"],
             linkedin_note=row.get("linkedin_note", ""),
             linkedin_message=row.get("linkedin_message", ""),
+            whatsapp_message=row.get("whatsapp_message", "") or "",
             email_subject=row["email_subject"],
             email_subject_alt1=row.get("email_subject_alt1", ""),
             email_subject_alt2=row.get("email_subject_alt2", ""),
@@ -292,6 +309,7 @@ class SupabaseDatabase(BaseDatabase):
         linkedin_note: str,
         linkedin_message: str,
         status: DraftStatus = DraftStatus.EDITED,
+        whatsapp_message: str = "",
     ):
         now = datetime.utcnow().isoformat()
         payload = {
@@ -300,10 +318,18 @@ class SupabaseDatabase(BaseDatabase):
             "email_body": email_body,
             "linkedin_note": linkedin_note,
             "linkedin_message": linkedin_message,
+            "whatsapp_message": whatsapp_message,
             "status": status.value,
             "updated_at": now,
         }
-        self.client.table("drafts").update(payload).eq("id", draft_id).execute()
+        try:
+            self.client.table("drafts").update(payload).eq("id", draft_id).execute()
+        except Exception as e:
+            if "whatsapp_message" in str(e).lower():
+                payload.pop("whatsapp_message", None)
+                self.client.table("drafts").update(payload).eq("id", draft_id).execute()
+            else:
+                raise
 
     # ------------------ Suppression List ------------------
 

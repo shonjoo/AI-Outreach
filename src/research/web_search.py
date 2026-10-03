@@ -51,6 +51,32 @@ class WebSearchEngine:
 
         return results
 
+    def search_maps_and_reviews(self, company: str, location_hint: str = "") -> List[Dict[str, str]]:
+        """Searches specifically for Google Maps presence, customer reviews, ratings, and customer sentiment."""
+        query = f"{company} {location_hint} google maps reviews rating".strip()
+        results = []
+
+        if not DDGS_AVAILABLE:
+            return results
+
+        try:
+            with DDGS() as ddgs:
+                ddg_results = ddgs.text(query, max_results=self.max_results)
+                if ddg_results:
+                    for r in ddg_results:
+                        title = r.get("title", "")
+                        body = r.get("body", "")
+                        href = r.get("href", "")
+                        results.append({
+                            "title": title,
+                            "snippet": body,
+                            "url": href,
+                        })
+        except Exception as e:
+            logger.debug(f"DuckDuckGo maps search error for '{query}': {e}")
+
+        return results
+
     def find_potential_website(self, company: str) -> Optional[str]:
         """Tries to find official website URL if not provided."""
         if not DDGS_AVAILABLE:
