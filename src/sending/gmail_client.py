@@ -130,25 +130,3 @@ class GmailClient:
             err = f"Failed to send email via Gmail API: {e}"
             logger.error(err)
             return False, None, None, err
-
-    def check_for_replies(self, thread_id: str, recipient_email: str) -> bool:
-        """
-        Checks if the recipient has sent an incoming reply on this thread.
-        """
-        if self.config.dry_run or not self.service or not thread_id or thread_id.startswith("dryrun-"):
-            return False
-
-        try:
-            thread = self.service.users().threads().get(userId="me", id=thread_id).execute()
-            messages = thread.get("messages", [])
-            if len(messages) > 1:
-                # Check headers of subsequent messages
-                for msg in messages[1:]:
-                    headers = msg.get("payload", {}).get("headers", [])
-                    sender_header = next((h["value"] for h in headers if h["name"].lower() == "from"), "")
-                    if recipient_email.lower() in sender_header.lower():
-                        return True
-        except Exception as e:
-            logger.debug(f"Error checking thread {thread_id} for replies: {e}")
-
-        return False

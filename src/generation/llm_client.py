@@ -1,4 +1,4 @@
-"""Unified LLM client supporting Gemini, Anthropic, OpenAI, and a grounded mock generator."""
+"""Unified LLM client supporting Gemini and a grounded mock generator."""
 
 import json
 import logging
@@ -15,40 +15,17 @@ logger = logging.getLogger(__name__)
 class LLMClient:
     def __init__(self, config: AppConfig):
         self.config = config
-        self.provider = config.llm.provider.lower()
-        self._init_clients()
-
-    def _init_clients(self):
         self.gemini_client = None
-        self.anthropic_client = None
-        self.openai_client = None
+        self._init_client()
 
-        if self.provider == "gemini":
-            api_key = self.config.llm.gemini_api_key or os.getenv("GEMINI_API_KEY")
-            if api_key:
-                try:
-                    from google import genai
-                    self.gemini_client = genai.Client(api_key=api_key)
-                except Exception as e:
-                    logger.warning(f"Could not initialize Google GenAI client: {e}")
-
-        elif self.provider == "anthropic":
-            api_key = self.config.llm.anthropic_api_key or os.getenv("ANTHROPIC_API_KEY")
-            if api_key:
-                try:
-                    import anthropic
-                    self.anthropic_client = anthropic.Anthropic(api_key=api_key)
-                except Exception as e:
-                    logger.warning(f"Could not initialize Anthropic client: {e}")
-
-        elif self.provider == "openai":
-            api_key = self.config.llm.openai_api_key or os.getenv("OPENAI_API_KEY")
-            if api_key:
-                try:
-                    from openai import OpenAI
-                    self.openai_client = OpenAI(api_key=api_key)
-                except Exception as e:
-                    logger.warning(f"Could not initialize OpenAI client: {e}")
+    def _init_client(self):
+        api_key = self.config.llm.gemini_api_key or os.getenv("GEMINI_API_KEY")
+        if api_key:
+            try:
+                from google import genai
+                self.gemini_client = genai.Client(api_key=api_key)
+            except Exception as e:
+                logger.warning(f"Could not initialize Google GenAI client: {e}")
 
     def generate_drafts(
         self,
@@ -57,9 +34,8 @@ class LLMClient:
         system_prompt: str,
         user_prompt: str,
     ) -> Dict[str, Any]:
-        """Generates outreach drafts using the configured LLM provider or offline mock."""
-        # 1. Try Gemini
-        if self.provider == "gemini" and self.gemini_client:
+        """Generates outreach drafts using Gemini or offline mock."""
+        if self.gemini_client:
             try:
                 response = self.gemini_client.models.generate_content(
                     model="gemini-3.8-flash",
@@ -75,38 +51,7 @@ class LLMClient:
             except Exception as e:
                 logger.error(f"Gemini generation error: {e}. Falling back to offline generator.")
 
-        # 2. Try Anthropic
-        elif self.provider == "anthropic" and self.anthropic_client:
-            try:
-                response = self.anthropic_client.messages.create(
-                    model="claude-3-5-sonnet-20241022",
-                    max_tokens=1500,
-                    system=system_prompt,
-                    messages=[{"role": "user", "content": user_prompt}],
-                )
-                text = response.content[0].text
-                return self._parse_json(text)
-            except Exception as e:
-                logger.error(f"Anthropic generation error: {e}. Falling back to offline generator.")
-
-        # 3. Try OpenAI
-        elif self.provider == "openai" and self.openai_client:
-            try:
-                response = self.openai_client.chat.completions.create(
-                    model="gpt-4o-mini",
-                    messages=[
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_prompt},
-                    ],
-                    response_format={"type": "json_object"},
-                    temperature=0.3,
-                )
-                text = response.choices[0].message.content
-                return self._parse_json(text)
-            except Exception as e:
-                logger.error(f"OpenAI generation error: {e}. Falling back to offline generator.")
-
-        # 4. Fallback / Offline Grounded Generator
+        # Fallback / Offline Grounded Generator
         return self._generate_offline_grounded(contact, dossier)
 
     def check_fact_grounding(self, draft_text: str, verified_facts: List[str]) -> Dict[str, Any]:
@@ -131,8 +76,7 @@ class LLMClient:
         )
         prompt = f"VERIFIED FACTS:\n{facts_text}\n\nDRAFT:\n{draft_text}"
 
-        # 1. Try Gemini
-        if self.provider == "gemini" and self.gemini_client:
+        if self.gemini_client:
             try:
                 response = self.gemini_client.models.generate_content(
                     model="gemini-3.8-flash",
@@ -146,35 +90,6 @@ class LLMClient:
                 return self._parse_json(response.text or "{}")
             except Exception as e:
                 logger.error(f"Gemini grounding check error: {e}")
-
-        # 2. Try OpenAI
-        elif self.provider == "openai" and self.openai_client:
-            try:
-                response = self.openai_client.chat.completions.create(
-                    model="gpt-4o-mini",
-                    messages=[
-                        {"role": "system", "content": system_instruction},
-                        {"role": "user", "content": prompt},
-                    ],
-                    response_format={"type": "json_object"},
-                    temperature=0.0,
-                )
-                return self._parse_json(response.choices[0].message.content)
-            except Exception as e:
-                logger.error(f"OpenAI grounding check error: {e}")
-
-        # 3. Try Anthropic
-        elif self.provider == "anthropic" and self.anthropic_client:
-            try:
-                response = self.anthropic_client.messages.create(
-                    model="claude-3-5-haiku-20241022",
-                    max_tokens=300,
-                    system=system_instruction,
-                    messages=[{"role": "user", "content": prompt}],
-                )
-                return self._parse_json(response.content[0].text)
-            except Exception as e:
-                logger.error(f"Anthropic grounding check error: {e}")
 
         # Fallback offline grounding check
         return self._offline_grounding_check(draft_text, verified_facts)

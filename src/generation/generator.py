@@ -22,69 +22,32 @@ class DraftGenerator:
     def generate_for_contact(self, contact: Contact, dossier: ResearchDossier, existing_draft_texts: Optional[List[str]] = None) -> Draft:
         """Generates a personalized draft package for a single contact with up to 3 validation attempts."""
         system_prompt = build_system_prompt(self.config)
-        base_user_prompt = build_user_prompt(contact, dossier)
+        user_prompt = build_user_prompt(contact, dossier)
 
-        max_attempts = 3
-        attempt = 0
-        violations = []
-        result = {}
-        passed_validation = False
+        # 1. Single LLM Generation Pass
+        result = self.llm.generate_drafts(contact, dossier, system_prompt, user_prompt)
+        email_body = result.get("email_body", "")
 
-        while attempt < max_attempts:
-            attempt += 1
+        # 2. Strict SlopDetector Check (Length, buzzwords, banned openers, em-dashes)
+        val_res = validate_draft(email_body, max_words=90)
+        violations = list(val_res.violations)
 
-            if violations:
-                prompt_to_send = (
-                    base_user_prompt
-                    + f"\n\nCRITICAL FIXES REQUIRED (Attempt {attempt}/{max_attempts}):\n"
-                    + "Your previous draft was rejected for the following rule violations:\n"
-                    + "\n".join(f"- {v}" for v in violations)
-                    + "\n\nRewrite the message from scratch. Ensure the email body is strictly under 90 words with zero banned words or patterns."
-                )
-            else:
-                prompt_to_send = base_user_prompt
+        # 3. Strict Fact-Grounding Check Against Dossier
+        grounding_res = self.llm.check_fact_grounding(email_body, dossier.verifiable_facts)
+        if not grounding_res.get("grounded", True):
+            unsupported = grounding_res.get("unsupported_claims", [])
+            violations.extend([f"Unsupported claim not in facts: {c}" for c in unsupported])
 
-            result = self.llm.generate_drafts(contact, dossier, system_prompt, prompt_to_send)
-            email_body = result.get("email_body", "")
+        # 4. Batch Uniqueness Check
+        if existing_draft_texts and not check_batch_uniqueness(email_body, existing_draft_texts, threshold=0.45):
+            violations.append("Draft is too similar to another message in this batch.")
 
-            # 1. Post-Generation Validator (Style & Negative Constraints)
-            val_res = validate_draft(email_body, max_words=90)
-            if not val_res.is_valid:
-                violations = val_res.violations
-                logger.warning(f"Draft validation failed for {contact.company} (attempt {attempt}/{max_attempts}): {violations}")
-                continue
-
-            # 2. Fact-Grounding Check (LLM Auditor)
-            grounding_res = self.llm.check_fact_grounding(email_body, dossier.verifiable_facts)
-            if not grounding_res.get("grounded", True):
-                unsupported = grounding_res.get("unsupported_claims", [])
-                violations = [f"Unsupported claim not found in verified facts: {claim}" for claim in unsupported]
-                logger.warning(f"Fact-grounding failed for {contact.company} (attempt {attempt}/{max_attempts}): {violations}")
-                continue
-
-            # 3. Uniqueness Check
-            if existing_draft_texts:
-                is_unique = check_batch_uniqueness(email_body, existing_draft_texts, threshold=0.45)
-                if not is_unique:
-                    violations = ["Draft is too similar to another message in this batch. Use a different angle."]
-                    logger.warning(f"Batch uniqueness failed for {contact.company} (attempt {attempt}/{max_attempts})")
-                    continue
-
-            # All checks passed!
-            passed_validation = True
-            violations = []
-            break
-
-        hook = result.get("hook", "")
-        source_facts = result.get("source_facts_used", dossier.verifiable_facts[:1])
-        needs_review = result.get("needs_manual_review", False) or not dossier.has_strong_hook
-
-        # If 3 attempts failed, mark draft as FLAGGED
-        if not passed_validation:
+        # 5. Determine Review & Approval Status
+        if violations:
             draft_status = DraftStatus.FLAGGED
             contact_status = ContactStatus.NEEDS_MANUAL_REVIEW
-            logger.error(f"Draft for {contact.company} FLAGGED after 3 failed attempts: {violations}")
-        elif needs_review:
+            logger.warning(f"Draft for {contact.company} FLAGGED: {violations}")
+        elif not dossier.has_strong_hook or result.get("needs_manual_review", False):
             draft_status = DraftStatus.PENDING
             contact_status = ContactStatus.NEEDS_MANUAL_REVIEW
         else:
@@ -101,6 +64,9 @@ class DraftGenerator:
         wa_words = wa_msg.split()
         if len(wa_words) > 50:
             wa_msg = " ".join(wa_words[:48]) + "..."
+
+        hook = result.get("hook", "")
+        source_facts = result.get("source_facts_used", dossier.verifiable_facts[:1])
 
         draft = Draft(
             contact_id=contact.id or 0,

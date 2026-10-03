@@ -79,8 +79,6 @@ class LimitsConfig:
 class LLMConfig:
     provider: str = "gemini"
     gemini_api_key: Optional[str] = None
-    anthropic_api_key: Optional[str] = None
-    openai_api_key: Optional[str] = None
 
 
 @dataclass
@@ -179,8 +177,6 @@ def load_config(config_path: str = "config.yaml") -> AppConfig:
     llm = LLMConfig(
         provider=llm_data.get("provider", "gemini"),
         gemini_api_key=os.getenv("GEMINI_API_KEY"),
-        anthropic_api_key=os.getenv("ANTHROPIC_API_KEY"),
-        openai_api_key=os.getenv("OPENAI_API_KEY"),
     )
 
     db_data = data.get("database", {})

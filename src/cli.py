@@ -15,7 +15,6 @@ from src.db.models import Contact, ContactStatus, DraftStatus
 from src.generation.generator import DraftGenerator
 from src.research.dossier import DossierBuilder
 from src.sending.gmail_client import GmailClient
-from src.sending.reply_tracker import ReplyTracker
 from src.sending.sender import OutreachSender
 from src.sending.suppression import SuppressionManager
 
@@ -105,17 +104,6 @@ def cmd_send(args, config: AppConfig, db: Database):
         logger.info(msg)
 
 
-def cmd_check_replies(args, config: AppConfig, db: Database):
-    gmail = GmailClient(config)
-    tracker = ReplyTracker(db, gmail)
-    logger.info("Checking Gmail threads for incoming replies...")
-    replies = tracker.check_all_active_threads()
-    if replies:
-        logger.info(f"Detected replies from: {', '.join(replies)}")
-    else:
-        logger.info("No new replies detected.")
-
-
 def cmd_stats(args, config: AppConfig, db: Database):
     contacts = db.list_contacts()
     today_count = db.get_today_sent_count()
@@ -171,9 +159,6 @@ def main():
     p_send = subparsers.add_parser("send", help="Send approved drafts")
     p_send.add_argument("--dry-run", action="store_true", default=False, help="Force dry-run mode")
 
-    # Replies
-    subparsers.add_parser("replies", help="Check for replies via Gmail API")
-
     # Stats
     subparsers.add_parser("stats", help="Show pipeline statistics")
 
@@ -194,8 +179,6 @@ def main():
         cmd_pipeline(args, config, db)
     elif args.command == "send":
         cmd_send(args, config, db)
-    elif args.command == "replies":
-        cmd_check_replies(args, config, db)
     elif args.command == "stats":
         cmd_stats(args, config, db)
     elif args.command == "auth":

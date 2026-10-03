@@ -7,7 +7,6 @@ from typing import Any, Dict, List, Optional
 
 from supabase import Client, create_client
 
-from src.db.base import BaseDatabase
 from src.db.models import (
     Contact,
     ContactStatus,
@@ -35,8 +34,8 @@ def _parse_json_field(val: Any) -> list:
     return []
 
 
-class SupabaseDatabase(BaseDatabase):
-    """Supabase cloud database repository implementing BaseDatabase."""
+class SupabaseDatabase:
+    """Supabase cloud database repository."""
 
     def __init__(self, supabase_url: str, supabase_key: str):
         self.supabase_url = supabase_url

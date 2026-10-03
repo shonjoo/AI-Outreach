@@ -8,7 +8,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, List, Optional
 
-from src.db.base import BaseDatabase
 from src.db.models import (
     Contact,
     ContactStatus,
@@ -22,7 +21,7 @@ from src.db.models import (
 logger = logging.getLogger(__name__)
 
 
-class Database(BaseDatabase):
+class Database:
     """
     Unified database repository.
     Acts as a facade: delegates to SupabaseDatabase when configured,
@@ -36,7 +35,7 @@ class Database(BaseDatabase):
         force_sqlite: bool = False,
     ):
         self.db_path = db_path
-        self._backend: Optional[BaseDatabase] = None
+        self._backend = None
 
         # Check if Supabase should be activated
         supabase_url = os.getenv("SUPABASE_URL")

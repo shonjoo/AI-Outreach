@@ -10,12 +10,9 @@ openpyxl>=3.1.2
 requests>=2.32.0
 beautifulsoup4>=4.12.3
 ddgs>=9.0.0
-duckduckgo-search>=6.0.0
 
-# LLM Providers (Official SDKs)
+# LLM Provider (Official SDK)
 google-genai>=2.25.0
-anthropic>=0.40.0
-openai>=1.50.0
 
 # Gmail API & OAuth
 google-auth>=2.35.0
