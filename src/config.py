@@ -26,10 +26,10 @@ except Exception:
 class SenderConfig:
     name: str = "Nillohit Debnath"
     email: str = "nillohitfreelanceco@gmail.com"
-    role: str = "Web and AI automation freelancer"
+    role: str = "Founder at almost normal"
     bio: str = (
-        "We build websites and AI automation for small businesses, helping them "
-        "get more customers and save time on repetitive work."
+        "We build websites and AI automation at almost normal, helping local businesses "
+        "get more clients and automate bookings."
     )
 
 
@@ -143,7 +143,7 @@ def load_config(config_path: str = "config.yaml") -> AppConfig:
     sender = SenderConfig(
         name=sender_data.get("name", "Nillohit Debnath"),
         email=sender_data.get("email", "nillohitfreelanceco@gmail.com"),
-        role=sender_data.get("role", "Web and AI automation freelancer"),
+        role=sender_data.get("role", "Founder at almost normal"),
         bio=sender_data.get("bio", ""),
     )
 

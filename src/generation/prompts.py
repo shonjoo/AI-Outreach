@@ -7,7 +7,8 @@ from src.db.models import Contact, ResearchDossier
 
 
 def build_system_prompt(config: AppConfig) -> str:
-    return f"""You write warm, human cold outreach on behalf of {config.sender.name}, a web and AI automation freelancer.
+    agency_info = f"founder of the agency 'almost normal'"
+    return f"""You write warm, human cold outreach on behalf of {config.sender.name}, {agency_info}.
 
 CORE PHILOSOPHY:
 You are reaching out to local business owners (clinics, salons, shops, restaurants, local services).

@@ -632,10 +632,11 @@ with st.sidebar:
     <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 1.25rem;">
         <div style="width: 32px; height: 32px; border-radius: 8px; background: #10b981; display: flex; align-items: center; justify-content: center; color: #050505; font-weight: 700; font-size: 1rem; box-shadow: 0 0 10px rgba(16, 185, 129, 0.35);">✦</div>
         <div>
-            <div style="font-weight: 600; font-size: 1rem; color: #f0fdf4; letter-spacing: -0.02em; line-height: 1.2;">Outreach Studio</div>
-            <div style="font-size: 0.72rem; color: #10b981; font-weight: 500;">Intelligence Engine</div>
+            <div style="font-weight: 600; font-size: 1rem; color: #f0fdf4; letter-spacing: -0.02em; line-height: 1.2;">almost normal</div>
+            <div style="font-size: 0.72rem; color: #10b981; font-weight: 500;">Outreach Studio</div>
         </div>
     </div>
+
 
     """, unsafe_allow_html=True)
 
@@ -833,9 +834,10 @@ col_h1, col_h2 = st.columns([3, 1])
 with col_h1:
     st.markdown("""
     <div style="margin-bottom: 0.75rem;">
-        <h1 style="font-size: 1.85rem; font-weight: 700; letter-spacing: -0.03em; margin: 0; color: #fafafa;">Outreach Studio</h1>
+        <h1 style="font-size: 1.85rem; font-weight: 700; letter-spacing: -0.03em; margin: 0; color: #fafafa;">almost normal <span style="font-weight: 400; font-size: 1.25rem; color: #10b981;">• Outreach Studio</span></h1>
         <p style="font-size: 0.875rem; color: #a1a1aa; margin: 0.25rem 0 0 0;">Autonomous prospect research, verified-fact personalization, and compliant cold messaging.</p>
     </div>
+
     """, unsafe_allow_html=True)
 with col_h2:
     if db.is_supabase:
