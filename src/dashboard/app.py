@@ -798,25 +798,6 @@ with st.sidebar:
                     st.success(f"Imported {imported_count} contacts.")
                     st.rerun()
 
-    if st.button("Load sample contacts"):
-        sample_path = Path("data/sample_contacts.csv")
-        if sample_path.exists():
-            with open(sample_path, "r", encoding="utf-8") as f:
-                reader = csv.DictReader(f)
-                for row in reader:
-                    contact = Contact(
-                        first_name=row.get("first_name", "").strip(),
-                        last_name=row.get("last_name", "").strip(),
-                        company=row.get("company", "").strip(),
-                        job_title=row.get("job_title", "").strip(),
-                        linkedin_url=row.get("linkedin_url", "").strip(),
-                        email=row.get("email", "").strip(),
-                        notes=row.get("notes", "").strip(),
-                    )
-                    db.insert_contact(contact)
-            load_all_contacts.clear()
-            st.success("Sample contacts loaded.")
-            st.rerun()
 
     if dashboard_password:
         st.markdown("<hr style='margin: 1.5rem 0 1rem 0; border-color: #27272a;'>", unsafe_allow_html=True)
