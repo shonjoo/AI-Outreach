@@ -70,6 +70,22 @@ st.markdown(
         contain: layout;
     }
 
+    /* Universal Interactive Clickable Targets */
+    button,
+    [role="button"],
+    [role="tab"],
+    [data-baseweb="tab"],
+    [data-testid="stExpander"] summary,
+    [data-testid="stCheckbox"] label,
+    [data-testid="stRadio"] label,
+    [data-baseweb="select"],
+    [data-testid="stLinkButton"] > a,
+    .shadcn-card,
+    .shadcn-badge,
+    a {
+        cursor: pointer !important;
+    }
+
     /* ShadCN Segmented Tabs */
     div[data-testid="stTabs"] {
         border-bottom: none !important;
@@ -94,13 +110,20 @@ st.markdown(
         font-size: 0.875rem !important;
         font-weight: 500 !important;
         line-height: 1.25 !important;
-        transition: all 0.15s ease !important;
+        transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
         min-height: 32px !important;
+        will-change: transform, background-color, color;
     }
 
     div[data-testid="stTabs"] button[role="tab"]:hover {
         color: #fafafa !important;
-        background: rgba(255, 255, 255, 0.05) !important;
+        background: rgba(255, 255, 255, 0.07) !important;
+        transform: translateY(-0.5px) !important;
+    }
+
+    div[data-testid="stTabs"] button[role="tab"]:active {
+        transform: scale(0.97) !important;
+        transition: all 0.08s ease !important;
     }
 
     div[data-testid="stTabs"] button[role="tab"][aria-selected="true"] {
@@ -108,6 +131,7 @@ st.markdown(
         color: #ffffff !important;
         font-weight: 600 !important;
         box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.35) !important;
+        transform: none !important;
     }
 
     div[data-testid="stTabs"] [data-baseweb="tab-highlight"],
@@ -127,16 +151,27 @@ st.markdown(
         border-radius: 0.375rem !important;
         padding: 8px 16px !important;
         box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
-        transition: all 0.15s ease-in-out !important;
+        transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1) !important;
         min-height: 36px !important;
+        will-change: transform, box-shadow, background-color, border-color;
     }
 
     button[kind="primary"]:hover,
     [data-testid="stButton"] > button[kind="primary"]:hover,
     [data-testid="stFormSubmitButton"] > button[kind="primary"]:hover {
-        background-color: #e4e4e7 !important;
-        border-color: #e4e4e7 !important;
+        background-color: #ffffff !important;
+        border-color: #ffffff !important;
         color: #09090b !important;
+        transform: translateY(-1.5px) !important;
+        box-shadow: 0 4px 14px 0 rgba(255, 255, 255, 0.18) !important;
+    }
+
+    button[kind="primary"]:active,
+    [data-testid="stButton"] > button[kind="primary"]:active,
+    [data-testid="stFormSubmitButton"] > button[kind="primary"]:active {
+        transform: translateY(0.5px) scale(0.98) !important;
+        box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.1) !important;
+        transition: all 0.08s ease !important;
     }
 
     /* ShadCN Secondary / Outline Buttons */
@@ -150,8 +185,10 @@ st.markdown(
         font-size: 0.875rem !important;
         border-radius: 0.375rem !important;
         padding: 8px 16px !important;
-        transition: all 0.15s ease-in-out !important;
+        transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1) !important;
         min-height: 36px !important;
+        box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.15) !important;
+        will-change: transform, box-shadow, background-color, border-color;
     }
 
     [data-testid="stButton"] > button:not([kind="primary"]):hover,
@@ -159,6 +196,15 @@ st.markdown(
         background-color: #27272a !important;
         border-color: #3f3f46 !important;
         color: #ffffff !important;
+        transform: translateY(-1.5px) !important;
+        box-shadow: 0 4px 14px 0 rgba(0, 0, 0, 0.35) !important;
+    }
+
+    [data-testid="stButton"] > button:not([kind="primary"]):active,
+    [data-testid="stFormSubmitButton"] > button:not([kind="primary"]):active {
+        transform: translateY(0.5px) scale(0.98) !important;
+        box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.2) !important;
+        transition: all 0.08s ease !important;
     }
 
     /* ShadCN Link Button */
@@ -170,17 +216,25 @@ st.markdown(
         font-size: 0.875rem !important;
         font-weight: 500 !important;
         padding: 8px 16px !important;
-        transition: all 0.15s ease !important;
+        transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1) !important;
         min-height: 36px !important;
         display: inline-flex !important;
         align-items: center !important;
         justify-content: center !important;
+        will-change: transform, box-shadow, background-color, border-color;
     }
 
     [data-testid="stLinkButton"] > a:hover {
         background-color: #18181b !important;
         border-color: #3f3f46 !important;
-        color: #fafafa !important;
+        color: #ffffff !important;
+        transform: translateY(-1.5px) !important;
+        box-shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.25) !important;
+    }
+
+    [data-testid="stLinkButton"] > a:active {
+        transform: translateY(0.5px) scale(0.98) !important;
+        transition: all 0.08s ease !important;
     }
 
     /* ShadCN Inputs, Textareas, Selectboxes */
@@ -190,12 +244,47 @@ st.markdown(
         border-radius: 0.375rem !important;
         color: #f4f4f5 !important;
         font-size: 0.875rem !important;
+        transition: border-color 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease, background-color 0.2s ease !important;
+    }
+
+    input:hover, textarea:hover, [data-baseweb="select"] > div:hover {
+        border-color: #3f3f46 !important;
     }
 
     input:focus, textarea:focus, [data-baseweb="select"] > div:focus-within {
         border-color: #71717a !important;
-        box-shadow: 0 0 0 1px #71717a !important;
+        box-shadow: 0 0 0 2px rgba(113, 113, 122, 0.25) !important;
         outline: none !important;
+    }
+
+    /* Dropdown options item hover */
+    ul[role="listbox"] li {
+        transition: background-color 0.15s ease, color 0.15s ease !important;
+        cursor: pointer !important;
+    }
+    ul[role="listbox"] li:hover {
+        background-color: #27272a !important;
+        color: #ffffff !important;
+    }
+
+    /* Radios & Checkboxes */
+    [data-testid="stRadio"] label,
+    [data-testid="stCheckbox"] label {
+        cursor: pointer !important;
+        transition: color 0.15s ease, transform 0.15s ease !important;
+    }
+
+    [data-testid="stRadio"] label:hover,
+    [data-testid="stCheckbox"] label:hover {
+        color: #ffffff !important;
+    }
+
+    [data-testid="stCheckbox"] div[data-baseweb="checkbox"] span {
+        transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    }
+
+    [data-testid="stCheckbox"] label:active div[data-baseweb="checkbox"] span {
+        transform: scale(0.9) !important;
     }
 
     /* ShadCN Card & Accordion (st.expander) */
@@ -206,6 +295,12 @@ st.markdown(
         margin-bottom: 0.75rem !important;
         box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1) !important;
         overflow: hidden !important;
+        transition: border-color 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    }
+
+    div[data-testid="stExpander"]:hover {
+        border-color: #3f3f46 !important;
+        box-shadow: 0 3px 12px 0 rgba(0, 0, 0, 0.25) !important;
     }
 
     div[data-testid="stExpander"] details {
@@ -219,7 +314,8 @@ st.markdown(
         color: #f4f4f5 !important;
         font-size: 0.925rem !important;
         font-weight: 500 !important;
-        transition: background-color 0.15s ease !important;
+        transition: background-color 0.2s cubic-bezier(0.16, 1, 0.3, 1), color 0.2s ease !important;
+        cursor: pointer !important;
     }
 
     div[data-testid="stExpander"] details[open] summary {
@@ -227,8 +323,17 @@ st.markdown(
     }
 
     div[data-testid="stExpander"] summary:hover {
-        background-color: #27272a !important;
+        background-color: #222226 !important;
         color: #ffffff !important;
+    }
+
+    div[data-testid="stExpander"] summary:active {
+        background-color: #27272a !important;
+        transform: scale(0.997) !important;
+    }
+
+    div[data-testid="stExpander"] summary svg {
+        transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
     }
 
     /* Sidebar */
@@ -243,11 +348,16 @@ st.markdown(
         border: 1px solid #27272a;
         border-radius: 0.5rem;
         padding: 1.25rem 1.5rem;
-        box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-        transition: border-color 0.15s ease;
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.15);
+        transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+                    border-color 0.22s ease,
+                    box-shadow 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+        will-change: transform, box-shadow, border-color;
     }
     .shadcn-card:hover {
         border-color: #3f3f46;
+        transform: translateY(-2.5px);
+        box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.45);
     }
     .shadcn-card-title {
         font-size: 0.75rem;
@@ -267,6 +377,39 @@ st.markdown(
         font-size: 0.75rem;
         color: #71717a;
         margin-top: 0.25rem;
+    }
+
+    /* ShadCN Badges */
+    .shadcn-badge {
+        display: inline-flex;
+        align-items: center;
+        border-radius: 9999px;
+        padding: 2px 9px;
+        font-size: 0.72rem;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+        line-height: 1.4;
+        transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+        will-change: transform, filter;
+    }
+    .shadcn-badge:hover {
+        transform: translateY(-1px);
+        filter: brightness(1.1);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+    }
+
+    /* File Uploader drag-and-drop interactive zone */
+    [data-testid="stFileUploader"] section {
+        border: 1px dashed #27272a !important;
+        border-radius: 0.5rem !important;
+        background-color: #09090b !important;
+        transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+        cursor: pointer !important;
+    }
+    [data-testid="stFileUploader"] section:hover {
+        border-color: #52525b !important;
+        background-color: #121215 !important;
+        transform: translateY(-1px) !important;
     }
 
     /* Monospace Code blocks */
@@ -336,9 +479,7 @@ def shadcn_badge(label: str, variant: str = "secondary") -> str:
     }
     style = variants.get(variant, variants["secondary"])
     return (
-        f'<span style="display: inline-flex; align-items: center; border-radius: 9999px; '
-        f'padding: 2px 9px; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.02em; '
-        f'line-height: 1.4; {style}">{label}</span>'
+        f'<span class="shadcn-badge" style="{style}">{label}</span>'
     )
 
 
