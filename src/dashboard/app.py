@@ -45,9 +45,9 @@ st.markdown(
        ========================================================================== */
 
     :root {
-        --figma-bg-primary: #050505;
-        --figma-bg-surface: #0f1110;
-        --figma-bg-surface-elevated: #161917;
+        --figma-bg-primary: #000000;
+        --figma-bg-surface: #0a0a0a;
+        --figma-bg-surface-elevated: #121212;
         --figma-border: #1e2420;
         --figma-border-subtle: #141815;
         --figma-border-hover: #84cc16;
@@ -92,7 +92,7 @@ st.markdown(
     }
 
     div[data-testid="stHeader"] {
-        background-color: rgba(9, 9, 11, 0.8) !important;
+        background-color: rgba(0, 0, 0, 0.85) !important;
         backdrop-filter: blur(16px) !important;
         border-bottom: 1px solid var(--figma-border) !important;
     }
