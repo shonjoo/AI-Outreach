@@ -14,7 +14,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 import streamlit as st
 from src.config import load_config
 from src.db.database import Database
-from src.db.models import Contact, ContactStatus, Draft, DraftStatus, ResearchDossier
+from src.db.models import Contact, ContactStatus, Draft, DraftStatus, ResearchDossier, SendLog
 from src.generation.generator import DraftGenerator
 from src.generation.llm_client import GeminiQuotaError
 from src.research.dossier import DossierBuilder
@@ -1057,10 +1057,21 @@ with tab_drafts:
                                             st.caption("No phone found in lead details.")
 
                                     with col_w3:
-                                        if st.button("Mark sent", key=f"mark_wa_{contact.id}"):
+                                        if st.button("Mark as Sent", key=f"mark_wa_{contact.id}"):
                                             db.update_contact_status(contact.id, ContactStatus.WHATSAPP_SENT)
+                                            db.update_draft_status(draft.id, DraftStatus.APPROVED)
+                                            # Record in send logs so it appears in Sent Messages & Logs tab
+                                            send_log = SendLog(
+                                                contact_id=contact.id,
+                                                draft_id=draft.id,
+                                                channel="whatsapp",
+                                                recipient=clean_phone or contact.email,
+                                                is_dry_run=False,
+                                                status="SENT",
+                                            )
+                                            db.log_send(send_log)
                                             load_all_contacts.clear()
-                                            st.success("Marked as WhatsApp sent.")
+                                            st.success("Marked as WhatsApp sent and logged.")
                                             st.rerun()
 
                                 with tab_li:
