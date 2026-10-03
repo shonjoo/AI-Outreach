@@ -392,37 +392,46 @@ st.markdown(
         transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
     }
 
-    /* Sidebar - Fixed Non-Scrollable Workspace Pane */
+    /* Sidebar - Scrollable Workspace Pane */
     [data-testid="stSidebar"],
     [data-testid="stSidebarNav"],
-    [data-testid="stSidebarContent"],
     section[data-testid="stSidebar"] > div {
         background-color: var(--figma-bg-primary) !important;
-        overflow-y: hidden !important;
-        overflow-x: hidden !important;
-        scrollbar-width: none !important;
-        -ms-overflow-style: none !important;
     }
 
-    [data-testid="stSidebar"]::-webkit-scrollbar,
+    [data-testid="stSidebarContent"] {
+        background-color: var(--figma-bg-primary) !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        padding-top: 1.25rem !important;
+        padding-bottom: 2rem !important;
+        padding-left: 1.15rem !important;
+        padding-right: 1.15rem !important;
+        scrollbar-width: thin !important;
+        scrollbar-color: var(--figma-border) transparent !important;
+    }
+
     [data-testid="stSidebarContent"]::-webkit-scrollbar {
-        display: none !important;
-        width: 0 !important;
-        height: 0 !important;
+        width: 5px !important;
+    }
+
+    [data-testid="stSidebarContent"]::-webkit-scrollbar-track {
+        background: transparent !important;
+    }
+
+    [data-testid="stSidebarContent"]::-webkit-scrollbar-thumb {
+        background: var(--figma-border) !important;
+        border-radius: 9999px !important;
+    }
+
+    [data-testid="stSidebarContent"]::-webkit-scrollbar-thumb:hover {
+        background: var(--figma-accent) !important;
     }
 
     [data-testid="stSidebar"] {
         border-right: 1px solid var(--figma-border) !important;
-        height: 100vh !important;
-        max-height: 100vh !important;
     }
 
-    [data-testid="stSidebarContent"] {
-        padding-top: 1rem !important;
-        padding-bottom: 1rem !important;
-        padding-left: 1rem !important;
-        padding-right: 1rem !important;
-    }
 
     /* Compact sidebar elements so everything fits within standard viewport height */
     [data-testid="stSidebar"] .shadcn-card {
