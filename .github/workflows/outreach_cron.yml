@@ -1,18 +1,23 @@
-name: Automated Outreach Pipeline
+name: Automated Research & Draft Generation (Review Queue Only)
+
+# ==============================================================================
+# HUMAN-IN-THE-LOOP SAFETY GUARANTEE:
+# This workflow NEVER approves drafts and NEVER sends emails.
+# Its sole function is to autonomously gather website intelligence, build
+# research dossiers, and generate personalized drafts for prospects.
+# Every generated draft is saved with status "AWAITING_REVIEW" in Supabase.
+# Sending strictly and exclusively requires a human operator to log into the
+# Streamlit dashboard and click "Approve & Send".
+# ==============================================================================
 
 on:
   workflow_dispatch:
-    inputs:
-      dry_run:
-        description: 'Dry run mode (True/False)'
-        required: true
-        default: 'True'
-  # Uncomment the following to run automatically Mon-Fri at 9:00 AM UTC:
+  # Uncomment the schedule below to automatically research and draft leads Mon-Fri at 9:00 AM UTC:
   # schedule:
   #   - cron: '0 9 * * 1-5'
 
 jobs:
-  outreach-pipeline:
+  research-and-draft:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -29,13 +34,17 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Run Pipeline
+      - name: Research & Generate Drafts for Review
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          GMAIL_TOKEN_JSON: ${{ secrets.GMAIL_TOKEN_JSON }}
-          DRY_RUN: ${{ github.event.inputs.dry_run || 'True' }}
+          DRY_RUN: 'True'
         run: |
-          python -m src.cli run --auto-approve
+          echo "=== STEP 1: Researching pending contacts ==="
+          python -m src.cli research
+          echo "=== STEP 2: Generating anti-slop personalized drafts ==="
+          python -m src.cli generate
+          echo "=== STEP 3: Review queue status ==="
+          python -m src.cli stats
