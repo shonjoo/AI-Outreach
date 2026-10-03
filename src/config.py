@@ -63,7 +63,8 @@ class LimitsConfig:
     linkedin_connection_note_chars: int = 300
     linkedin_message_chars: int = 600
     email_words: str = "100-150"
-    emails_per_day: int = 20
+    # Default 5/day for first 2 weeks to warm up new Gmail accounts safely without triggering spam heuristics
+    emails_per_day: int = 5
     delay_between_sends_seconds: List[int] = field(default_factory=lambda: [90, 240])
 
     @property
@@ -169,7 +170,7 @@ def load_config(config_path: str = "config.yaml") -> AppConfig:
         linkedin_connection_note_chars=limits_data.get("linkedin_connection_note_chars", 300),
         linkedin_message_chars=limits_data.get("linkedin_message_chars", 600),
         email_words=str(limits_data.get("email_words", "100-150")),
-        emails_per_day=limits_data.get("emails_per_day", 20),
+        emails_per_day=limits_data.get("emails_per_day", 5),
         delay_between_sends_seconds=limits_data.get("delay_between_sends_seconds", [90, 240]),
     )
 

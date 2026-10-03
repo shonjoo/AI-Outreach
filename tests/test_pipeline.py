@@ -36,7 +36,7 @@ class TestOutreachPipeline(unittest.TestCase):
         """Verify that config.yaml strictly matches user specifications."""
         self.assertEqual(self.config.sender.name, "Nillohit Debnath")
         self.assertEqual(self.config.sender.email, "nillohitfreelanceco@gmail.com")
-        self.assertEqual(self.config.limits.emails_per_day, 20)
+        self.assertEqual(self.config.limits.emails_per_day, 5)
         self.assertEqual(self.config.limits.delay_between_sends_seconds, [90, 240])
         self.assertIn("synergy", self.config.style.avoid)
         self.assertIn("I hope this finds you well", self.config.style.avoid)

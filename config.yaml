@@ -19,7 +19,10 @@ limits:
   linkedin_connection_note_chars: 300
   linkedin_message_chars: 600
   email_words: "100-150"
-  emails_per_day: 20
+  # Set to 5/day during the initial 2-week inbox warm-up period to build sender reputation
+  # and prevent brand-new Gmail accounts from triggering spam filters or rate limits.
+  # Can be gradually scaled up (e.g. to 10, then 20/day) after the warm-up window.
+  emails_per_day: 5
   delay_between_sends_seconds: [90, 240]
 
 llm:
