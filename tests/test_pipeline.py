@@ -23,7 +23,7 @@ class TestOutreachPipeline(unittest.TestCase):
         self.config = load_config()
         self.config.db_path = self.db_path
         self.config.dry_run = True
-        self.db = Database(self.db_path)
+        self.db = Database(self.db_path, force_sqlite=True)
         self.suppression = SuppressionManager(self.db)
         self.builder = DossierBuilder()
         self.generator = DraftGenerator(self.config, self.db)
