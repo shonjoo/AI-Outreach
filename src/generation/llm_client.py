@@ -11,6 +11,28 @@ from src.db.models import Contact, ResearchDossier
 
 logger = logging.getLogger(__name__)
 
+# Raised when Gemini returns a rate-limit or quota-exceeded error.
+# Callers must catch this and surface it to the user — never swallow it.
+class GeminiQuotaError(Exception):
+    pass
+
+
+_QUOTA_PHRASES = (
+    "resource_exhausted",
+    "quota",
+    "rate limit",
+    "429",
+    "ratelimitexceeded",
+    "quotaexceeded",
+)
+
+
+def _is_quota_error(exc: Exception) -> bool:
+    """True if the exception is a Gemini quota / rate-limit hit."""
+    msg = str(exc).lower()
+    return any(phrase in msg for phrase in _QUOTA_PHRASES)
+
+
 
 class LLMClient:
     def __init__(self, config: AppConfig):
@@ -49,7 +71,12 @@ class LLMClient:
                 text = response.text or ""
                 return self._parse_json(text)
             except Exception as e:
+                if _is_quota_error(e):
+                    raise GeminiQuotaError(
+                        "Daily free quota reached, try again tomorrow."
+                    ) from e
                 logger.error(f"Gemini generation error: {e}. Falling back to offline generator.")
+
 
         # Fallback / Offline Grounded Generator
         return self._generate_offline_grounded(contact, dossier)
@@ -89,7 +116,12 @@ class LLMClient:
                 )
                 return self._parse_json(response.text or "{}")
             except Exception as e:
+                if _is_quota_error(e):
+                    raise GeminiQuotaError(
+                        "Daily free quota reached, try again tomorrow."
+                    ) from e
                 logger.error(f"Gemini grounding check error: {e}")
+
 
         # Fallback offline grounding check
         return self._offline_grounding_check(draft_text, verified_facts)

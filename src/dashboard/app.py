@@ -16,6 +16,7 @@ from src.config import load_config
 from src.db.database import Database
 from src.db.models import Contact, ContactStatus, Draft, DraftStatus, ResearchDossier
 from src.generation.generator import DraftGenerator
+from src.generation.llm_client import GeminiQuotaError
 from src.research.dossier import DossierBuilder
 from src.sending.sender import OutreachSender
 from src.sending.suppression import SuppressionManager
@@ -659,18 +660,23 @@ with st.sidebar:
                     imported_count = 0
                     with st.spinner("Processing..."):
                         progress_bar = st.progress(0.0)
-                        for idx, contact in enumerate(parsed_contacts):
-                            cid = db.insert_contact(contact)
-                            contact.id = cid
-                            imported_count += 1
-                            # Research & Draft
-                            dossier = dossier_builder.build_dossier(contact)
-                            db.save_dossier(dossier)
-                            draft_gen.generate_for_contact(contact, dossier)
-                            progress_bar.progress((idx + 1) / len(parsed_contacts))
+                        try:
+                            for idx, contact in enumerate(parsed_contacts):
+                                cid = db.insert_contact(contact)
+                                contact.id = cid
+                                imported_count += 1
+                                # Research & Draft
+                                dossier = dossier_builder.build_dossier(contact)
+                                db.save_dossier(dossier)
+                                draft_gen.generate_for_contact(contact, dossier)
+                                progress_bar.progress((idx + 1) / len(parsed_contacts))
+                        except GeminiQuotaError:
+                            st.error("⚠️ Daily free Gemini quota reached. Generation stopped. Try again tomorrow.")
+                            st.stop()
                     load_all_contacts.clear()
                     st.success(f"Imported and generated drafts for {imported_count} contacts.")
                     st.rerun()
+
 
             with col_u2:
                 if st.button("Import only", key="btn_import_only"):
@@ -789,15 +795,20 @@ with tab_drafts:
                 if st.button("Generate pending", type="primary", key="btn_gen_all_pending"):
                     p_bar = st.progress(0.0)
                     st_text = st.empty()
-                    for idx, c in enumerate(unprocessed_contacts):
-                        st_text.text(f"Processing ({idx+1}/{len(unprocessed_contacts)}): {c.company}...")
-                        d = dossier_builder.build_dossier(c)
-                        db.save_dossier(d)
-                        draft_gen.generate_for_contact(c, d)
-                        p_bar.progress((idx + 1) / len(unprocessed_contacts))
+                    try:
+                        for idx, c in enumerate(unprocessed_contacts):
+                            st_text.text(f"Processing ({idx+1}/{len(unprocessed_contacts)}): {c.company}...")
+                            d = dossier_builder.build_dossier(c)
+                            db.save_dossier(d)
+                            draft_gen.generate_for_contact(c, d)
+                            p_bar.progress((idx + 1) / len(unprocessed_contacts))
+                    except GeminiQuotaError:
+                        st.error("⚠️ Daily free Gemini quota reached. Generation stopped. Try again tomorrow.")
+                        st.stop()
                     load_all_contacts.clear()
                     st.success(f"Generated drafts for {len(unprocessed_contacts)} contacts.")
                     st.rerun()
+
 
     # Filter options
     status_filter = st.selectbox(
@@ -897,12 +908,16 @@ with tab_drafts:
                                 run_research = st.form_submit_button("Research and generate")
                                 if run_research:
                                     with st.spinner("Generating..."):
-                                        new_dossier = dossier_builder.build_dossier(contact, user_pasted_linkedin=pasted_info)
-                                        db.save_dossier(new_dossier)
-                                        new_draft = draft_gen.generate_for_contact(contact, new_dossier)
-                                        load_all_contacts.clear()
-                                        st.success("Draft generated.")
-                                        st.rerun()
+                                        try:
+                                            new_dossier = dossier_builder.build_dossier(contact, user_pasted_linkedin=pasted_info)
+                                            db.save_dossier(new_dossier)
+                                            new_draft = draft_gen.generate_for_contact(contact, new_dossier)
+                                            load_all_contacts.clear()
+                                            st.success("Draft generated.")
+                                            st.rerun()
+                                        except GeminiQuotaError:
+                                            st.error("⚠️ Daily free Gemini quota reached. Generation stopped. Try again tomorrow.")
+
 
                 # Right Column: Drafts
                 with col_right:

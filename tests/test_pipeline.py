@@ -8,7 +8,7 @@ from pathlib import Path
 
 from src.config import load_config
 from src.db.database import Database
-from src.db.models import Contact, ContactStatus, Draft, DraftStatus
+from src.db.models import Contact, ContactStatus, Draft, DraftStatus, ResearchDossier
 from src.generation.generator import DraftGenerator
 from src.generation.uniqueness import calculate_jaccard_similarity, check_batch_uniqueness
 from src.research.dossier import DossierBuilder
@@ -334,6 +334,37 @@ class TestOutreachPipeline(unittest.TestCase):
         updated_draft = self.db.get_draft(cid)
         self.assertEqual(updated_draft.whatsapp_message, edited_wa)
 
+    def test_12_gemini_quota_error_raised_on_rate_limit(self):
+        """Verify that Gemini quota/rate-limit errors raise GeminiQuotaError and do not silently fall through."""
+        from unittest.mock import MagicMock
+        from src.generation.llm_client import GeminiQuotaError
+
+        contact = Contact(
+            first_name="Quota",
+            last_name="Test",
+            company="Quota Salon",
+            email="quota@test.com",
+        )
+        dossier = ResearchDossier(
+            contact_id=1,
+            business_name="Quota Salon",
+            verifiable_facts=["Rating: 4.8"],
+        )
+
+        mock_gemini = MagicMock()
+        mock_gemini.models.generate_content.side_effect = Exception("429 RESOURCE_EXHAUSTED: Quota exceeded for quota metric")
+
+        llm_client = self.generator.llm
+        llm_client.gemini_client = mock_gemini
+
+        # Must raise GeminiQuotaError, not silently fall back to offline generator
+        with self.assertRaises(GeminiQuotaError):
+            llm_client.generate_drafts(contact, dossier, "system", "user")
+
+        with self.assertRaises(GeminiQuotaError):
+            llm_client.check_fact_grounding("Some draft text", ["Rating: 4.8"])
+
 
 if __name__ == "__main__":
     unittest.main()
+
