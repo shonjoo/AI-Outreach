@@ -1,0 +1,18 @@
+services:
+  outreach-dashboard:
+    build: .
+    container_name: outreach_dashboard
+    restart: unless-stopped
+    ports:
+      - "8501:8501"
+    environment:
+      - DRY_RUN=${DRY_RUN:-True}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - DASHBOARD_PASSWORD=${DASHBOARD_PASSWORD:-secretpassword}
+      - GOOGLE_CLIENT_SECRET_FILE=credentials.json
+      - GOOGLE_TOKEN_FILE=token.json
+    volumes:
+      # Persist SQLite database and tokens across container restarts
+      - ./outreach.db:/app/outreach.db
+      - ./credentials.json:/app/credentials.json
+      - ./token.json:/app/token.json
