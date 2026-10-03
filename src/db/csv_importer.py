@@ -220,3 +220,13 @@ def parse_any_lead_file(file_bytes: bytes, filename: str, target_sheet: Optional
         return parse_excel_file(file_bytes, target_sheet=target_sheet)
     else:
         return parse_csv_file(file_bytes)
+
+
+def import_contacts_to_db(db: Database, contacts: List[Contact]) -> int:
+    """Inserts a list of parsed Contact objects into the database, returning imported count."""
+    count = 0
+    for contact in contacts:
+        db.insert_contact(contact)
+        count += 1
+    return count
+

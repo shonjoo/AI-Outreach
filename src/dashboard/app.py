@@ -16,6 +16,8 @@ from src.generation.generator import DraftGenerator
 from src.research.dossier import DossierBuilder
 from src.sending.sender import OutreachSender
 from src.sending.suppression import SuppressionManager
+from src.db.csv_importer import import_contacts_to_db, parse_any_lead_file
+
 
 # Streamlit Page Config (Very first call, wide layout, expanded sidebar)
 st.set_page_config(
@@ -227,8 +229,6 @@ with st.sidebar:
                 target_sheet = st.selectbox("Sheet:", sheets, index=default_idx)
             except Exception as e:
                 st.warning(f"Could not read sheets: {e}")
-
-        from src.db.csv_importer import parse_any_lead_file, import_contacts_to_db
 
         parsed_contacts, parse_errors, meta = parse_any_lead_file(
             file_bytes=file_bytes,
