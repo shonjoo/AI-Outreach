@@ -392,11 +392,53 @@ st.markdown(
         transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
     }
 
-    /* Sidebar - Figma Workspace Pane */
-    [data-testid="stSidebar"] {
+    /* Sidebar - Fixed Non-Scrollable Workspace Pane */
+    [data-testid="stSidebar"],
+    [data-testid="stSidebarNav"],
+    [data-testid="stSidebarContent"],
+    section[data-testid="stSidebar"] > div {
         background-color: var(--figma-bg-primary) !important;
-        border-right: 1px solid var(--figma-border) !important;
+        overflow-y: hidden !important;
+        overflow-x: hidden !important;
+        scrollbar-width: none !important;
+        -ms-overflow-style: none !important;
     }
+
+    [data-testid="stSidebar"]::-webkit-scrollbar,
+    [data-testid="stSidebarContent"]::-webkit-scrollbar {
+        display: none !important;
+        width: 0 !important;
+        height: 0 !important;
+    }
+
+    [data-testid="stSidebar"] {
+        border-right: 1px solid var(--figma-border) !important;
+        height: 100vh !important;
+        max-height: 100vh !important;
+    }
+
+    [data-testid="stSidebarContent"] {
+        padding-top: 1rem !important;
+        padding-bottom: 1rem !important;
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+    }
+
+    /* Compact sidebar elements so everything fits within standard viewport height */
+    [data-testid="stSidebar"] .shadcn-card {
+        padding: 0.6rem 0.8rem !important;
+        margin-bottom: 0.35rem !important;
+    }
+
+    [data-testid="stSidebar"] div[data-testid="stVerticalBlock"] {
+        gap: 0.45rem !important;
+    }
+
+    [data-testid="stSidebar"] hr {
+        margin: 0.45rem 0 !important;
+    }
+
+
 
     /* Figma Component: Surface Cards */
     .shadcn-card {
