@@ -41,6 +41,12 @@ class GmailClient:
                 creds = Credentials.from_authorized_user_file(str(token_path), GMAIL_SCOPES)
             except Exception as e:
                 logger.warning(f"Error loading existing token: {e}")
+        elif os.getenv("GMAIL_TOKEN_JSON"):
+            try:
+                import json
+                creds = Credentials.from_authorized_user_info(json.loads(os.getenv("GMAIL_TOKEN_JSON")), GMAIL_SCOPES)
+            except Exception as e:
+                logger.warning(f"Error loading token from GMAIL_TOKEN_JSON env var: {e}")
 
         # If credentials don't exist or are invalid, attempt refresh if possible
         if creds and creds.expired and creds.refresh_token:

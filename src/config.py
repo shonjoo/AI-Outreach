@@ -10,6 +10,17 @@ from dotenv import load_dotenv
 # Load .env file if present
 load_dotenv()
 
+# Bridge Streamlit Cloud secrets to os.environ if running inside Streamlit
+try:
+    import streamlit as st
+    if hasattr(st, "secrets"):
+        for k, v in st.secrets.items():
+            if isinstance(v, (str, int, float, bool)):
+                os.environ.setdefault(k, str(v))
+except Exception:
+    pass
+
+
 
 @dataclass
 class SenderConfig:
