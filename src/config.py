@@ -118,6 +118,8 @@ class AppConfig:
     google_client_secret_file: str = "credentials.json"
     google_token_file: str = "token.json"
     lead_alert_webhook_url: Optional[str] = None
+    dashboard_password: Optional[str] = None
+    dashboard_access_token: Optional[str] = None
 
     @property
     def db_backend(self) -> str:
@@ -202,6 +204,9 @@ def load_config(config_path: str = "config.yaml") -> AppConfig:
     dry_run = dry_run_env in ("true", "1", "yes", "t")
 
     webhook_url = os.getenv("LEAD_ALERT_WEBHOOK_URL") or data.get("lead_alert_webhook_url")
+    security_data = data.get("security", {})
+    dash_pwd = os.getenv("DASHBOARD_PASSWORD") or security_data.get("password")
+    dash_token = os.getenv("DASHBOARD_ACCESS_TOKEN") or security_data.get("access_token")
 
     return AppConfig(
         sender=sender,
@@ -215,4 +220,6 @@ def load_config(config_path: str = "config.yaml") -> AppConfig:
         google_client_secret_file=os.getenv("GOOGLE_CLIENT_SECRET_FILE", "credentials.json"),
         google_token_file=os.getenv("GOOGLE_TOKEN_FILE", "token.json"),
         lead_alert_webhook_url=webhook_url.strip() if webhook_url else None,
+        dashboard_password=str(dash_pwd).strip() if dash_pwd else None,
+        dashboard_access_token=str(dash_token).strip() if dash_token else None,
     )

@@ -924,13 +924,32 @@ def parse_uploaded_lead_file(file_bytes: bytes, filename: str, target_sheet: Opt
 def get_cached_excel_sheets(file_bytes: bytes):
     return get_excel_sheet_info(file_bytes)
 
-# Remote Access Security: Dashboard Password Gate
-dashboard_password = os.getenv("DASHBOARD_PASSWORD", "").strip()
+# Remote Access Security: Secret Link Token & Password Gate
+configured_token = config.dashboard_access_token or os.getenv("DASHBOARD_ACCESS_TOKEN", "").strip()
+configured_password = config.dashboard_password or os.getenv("DASHBOARD_PASSWORD", "").strip()
+auth_required = bool(configured_token or configured_password)
 
-if dashboard_password:
+if auth_required:
     if "authenticated" not in st.session_state:
         st.session_state["authenticated"] = False
 
+    # Check for Secret Link Token in query params (e.g. ?token=secret_key or ?key=secret_key)
+    query_params = getattr(st, "query_params", None)
+    if query_params and configured_token and not st.session_state["authenticated"]:
+        token_in_url = query_params.get("token") or query_params.get("key") or query_params.get("access_token")
+        if token_in_url:
+            import hmac
+            if hmac.compare_digest(str(token_in_url).strip(), configured_token):
+                st.session_state["authenticated"] = True
+                # Clean token from browser address bar immediately so it isn't leaked in history or shoulder-surfing
+                try:
+                    for k in ["token", "key", "access_token"]:
+                        if k in query_params:
+                            del query_params[k]
+                except Exception:
+                    pass
+
+    # If still not authenticated, display secure access gate
     if not st.session_state["authenticated"]:
         _, center_col, _ = st.columns([1, 2, 1])
         with center_col:
@@ -939,21 +958,28 @@ if dashboard_password:
                 <div class="shadcn-card" style="margin-top: 3.5rem; margin-bottom: 1.25rem; text-align: center; padding: 2rem; border-color: rgba(132, 204, 22, 0.3);">
                     <div style="width: 44px; height: 44px; border-radius: 10px; background: #84cc16; color: #050505; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.35rem; margin-bottom: 0.85rem; box-shadow: 0 0 16px rgba(132, 204, 22, 0.4);">✦</div>
                     <div style="font-weight: 600; font-size: 1.35rem; color: #f0fdf4; letter-spacing: -0.025em;">Outreach Studio</div>
-                    <div style="font-size: 0.85rem; color: #94a3b8; margin-top: 0.35rem;">Authentication required to access outreach intelligence.</div>
+                    <div style="font-size: 0.85rem; color: #94a3b8; margin-top: 0.35rem;">Protected Workspace. Only authorized team members with the secret link or access key may enter.</div>
                 </div>
                 """,
                 unsafe_allow_html=True,
             )
             with st.form("shadcn_login_form"):
-                pwd_input = st.text_input("Access Password", type="password", placeholder="Enter dashboard password...")
+                access_input = st.text_input("Access Key or Password", type="password", placeholder="Paste secret access link token or password...")
                 submit_login = st.form_submit_button("Unlock Studio", type="primary", use_container_width=True)
                 if submit_login:
                     import hmac
-                    if hmac.compare_digest(pwd_input.strip(), dashboard_password):
+                    clean_input = access_input.strip()
+                    valid_match = False
+                    if configured_token and hmac.compare_digest(clean_input, configured_token):
+                        valid_match = True
+                    elif configured_password and hmac.compare_digest(clean_input, configured_password):
+                        valid_match = True
+
+                    if valid_match:
                         st.session_state["authenticated"] = True
                         st.rerun()
                     else:
-                        st.error("Incorrect password. Access denied.")
+                        st.error("Invalid access token or password. Access denied.")
         st.stop()
 
 # Sidebar
@@ -1170,7 +1196,7 @@ with st.sidebar:
                     st.rerun()
 
 
-    if dashboard_password:
+    if auth_required:
         st.markdown("<hr style='margin: 1.5rem 0 1rem 0; border-color: #27272a;'>", unsafe_allow_html=True)
         if st.button("Log out of Studio", use_container_width=True):
             st.session_state["authenticated"] = False
