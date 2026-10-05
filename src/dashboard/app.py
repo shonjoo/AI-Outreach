@@ -848,8 +848,7 @@ follow_up_later_count = sum(1 for c in all_contacts if c.status == ContactStatus
 suppressed_all = db.list_suppressed()
 suppression_count = len(suppressed_all)
 sent_today = db.get_today_sent_count()
-limit_today = config.limits.emails_per_day
-webhook_configured = bool(config.lead_alert_webhook_url)
+webhook_configured = bool(getattr(config, "lead_alert_webhook_url", None) or os.getenv("LEAD_ALERT_WEBHOOK_URL"))
 
 
 # ShadCN Header
@@ -1012,8 +1011,9 @@ with tab_analytics:
         </div>
         """, unsafe_allow_html=True)
 
-        if config.lead_alert_webhook_url:
-            masked_url = config.lead_alert_webhook_url[:24] + "..." if len(config.lead_alert_webhook_url) > 24 else config.lead_alert_webhook_url
+        active_wh_url = getattr(config, "lead_alert_webhook_url", None) or os.getenv("LEAD_ALERT_WEBHOOK_URL")
+        if active_wh_url:
+            masked_url = active_wh_url[:24] + "..." if len(active_wh_url) > 24 else active_wh_url
             wh_html = f"""
             <div class="shadcn-card" style="padding: 1rem;">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
