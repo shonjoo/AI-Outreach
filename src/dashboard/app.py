@@ -7,6 +7,7 @@ import re
 import sys
 import urllib.parse
 from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
 
 # Add project root to sys.path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))

@@ -3,9 +3,8 @@
 import csv
 import io
 import re
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
-from src.db.database import Database
 from src.db.models import Contact
 
 HEADER_ALIASES = {
@@ -290,7 +289,7 @@ def parse_any_lead_file(file_bytes: bytes, filename: str, target_sheet: Optional
         return parse_csv_file(file_bytes)
 
 
-def import_contacts_to_db(db: Database, contacts: List[Contact]) -> int:
+def import_contacts_to_db(db: Any, contacts: List[Contact]) -> int:
     """Inserts a list of parsed Contact objects into the database using high-performance batching."""
     if not contacts:
         return 0
