@@ -678,13 +678,73 @@ st.markdown(
         background: linear-gradient(90deg, transparent, rgba(132, 204, 22, 0.6), transparent);
     }
 
-    /* Smooth Micro-animations */
+    /* Smooth Micro-animations & Skeleton Loaders */
     @keyframes pulse-subtle {
         0%, 100% { opacity: 1; transform: scale(1); }
         50% { opacity: 0.85; transform: scale(1.02); }
     }
     .pulse-glow {
         animation: pulse-subtle 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+
+    @keyframes shimmer-wave {
+        0% { background-position: -200% 0; }
+        100% { background-position: 200% 0; }
+    }
+    .skeleton-shimmer {
+        background: linear-gradient(90deg, #18181b 25%, #27272a 50%, #18181b 75%);
+        background-size: 200% 100%;
+        animation: shimmer-wave 1.6s ease-in-out infinite;
+        border-radius: var(--figma-radius-sm);
+    }
+
+    /* Keyboard Shortcut Hint Tag */
+    .kbd-shortcut {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-family: var(--figma-font-mono, monospace);
+        font-size: 0.65rem;
+        font-weight: 700;
+        color: #a1a1aa;
+        background: #18181b;
+        border: 1px solid #3f3f46;
+        border-bottom: 2px solid #52525b;
+        border-radius: 4px;
+        padding: 1px 5px;
+        line-height: 1.1;
+        margin-left: 6px;
+        letter-spacing: 0.04em;
+        vertical-align: middle;
+    }
+
+    /* Prospect Card Channel Micro-pill */
+    .micro-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 0.6875rem;
+        font-weight: 500;
+        padding: 2px 7px;
+        border-radius: 9999px;
+        line-height: 1.3;
+        border: 1px solid transparent;
+        white-space: nowrap;
+    }
+    .micro-pill-green {
+        background: rgba(132, 204, 22, 0.1);
+        color: #bef264;
+        border-color: rgba(132, 204, 22, 0.25);
+    }
+    .micro-pill-blue {
+        background: rgba(56, 189, 248, 0.1);
+        color: #7dd3fc;
+        border-color: rgba(56, 189, 248, 0.25);
+    }
+    .micro-pill-zinc {
+        background: rgba(39, 39, 42, 0.6);
+        color: #a1a1aa;
+        border-color: #3f3f46;
     }
 
     /* Stat Card Highlighting with Vibrant Top Gradient */
@@ -1470,16 +1530,32 @@ with tab_drafts:
                 if st.button("Generate pending", type="primary", key="btn_gen_all_pending"):
                     p_bar = st.progress(0.0)
                     st_text = st.empty()
+                    skeleton_placeholder = st.empty()
+                    skeleton_placeholder.markdown("""
+                    <div style="background: #09090b; border: 1px solid #27272a; border-radius: 8px; padding: 1.25rem; margin-bottom: 1rem;">
+                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                            <div class="skeleton-shimmer" style="width: 36px; height: 36px; border-radius: 9999px;"></div>
+                            <div style="flex: 1;">
+                                <div class="skeleton-shimmer" style="width: 40%; height: 14px; margin-bottom: 6px;"></div>
+                                <div class="skeleton-shimmer" style="width: 25%; height: 10px;"></div>
+                            </div>
+                        </div>
+                        <div class="skeleton-shimmer" style="width: 100%; height: 40px; margin-bottom: 8px;"></div>
+                        <div class="skeleton-shimmer" style="width: 75%; height: 26px;"></div>
+                    </div>
+                    """, unsafe_allow_html=True)
                     try:
                         for idx, c in enumerate(unprocessed_contacts):
-                            st_text.text(f"Processing ({idx+1}/{len(unprocessed_contacts)}): {c.company}...")
+                            st_text.markdown(f"<div style='font-size: 0.825rem; color: #a1a1aa; margin-bottom: 4px;'>Researching & drafting ({idx+1}/{len(unprocessed_contacts)}): <b style='color: #fafafa;'>{html.escape(c.company)}</b></div>", unsafe_allow_html=True)
                             d = dossier_builder.build_dossier(c)
                             db.save_dossier(d)
                             draft_gen.generate_for_contact(c, d)
                             p_bar.progress((idx + 1) / len(unprocessed_contacts))
                     except GeminiQuotaError:
-                        st.error("⚠️ Daily free Gemini quota reached. Generation stopped. Try again tomorrow.")
+                        skeleton_placeholder.empty()
+                        st.error("⚠️ Daily free Gemini quota reached. Generation stopped safely. Remaining contacts queued.")
                         st.stop()
+                    skeleton_placeholder.empty()
                     invalidate_dashboard_cache()
                     st.success(f"Generated drafts for {len(unprocessed_contacts)} contacts.")
                     st.rerun()
@@ -1559,13 +1635,40 @@ with tab_drafts:
             safe_comp = html.escape(contact.company)
             safe_email = html.escape(contact.email)
 
+            # Channel & Intelligence Micro-Badges
+            email_ready = not (contact.email.endswith("@linkedin-lead.local") or contact.email.endswith("@local-lead.local"))
+            has_phone = bool(re.search(r"Phone:\s*([+0-9\s\-()]+)", contact.notes or ""))
+            has_website = bool(dossier and dossier.website_url) or bool(contact.website)
+            
+            pills_html = []
+            if email_ready:
+                pills_html.append('<span class="micro-pill micro-pill-green">✉ Email ready</span>')
+            else:
+                pills_html.append('<span class="micro-pill micro-pill-zinc">No email</span>')
+
+            if has_phone:
+                pills_html.append('<span class="micro-pill micro-pill-blue">📱 Phone/WA</span>')
+            else:
+                pills_html.append('<span class="micro-pill micro-pill-zinc">No phone</span>')
+
+            if has_website:
+                pills_html.append('<span class="micro-pill micro-pill-green">🌐 Website Crawled</span>')
+
+            pills_row_html = "".join(pills_html)
+
             st.markdown(f"""
             <div style="background-color: #0c0d0e; border: 1px solid var(--figma-border); border-radius: var(--figma-radius-md) var(--figma-radius-md) 0 0; padding: 0.75rem 1rem; display: flex; align-items: center; justify-content: space-between; margin-bottom: -1px;">
                 <div style="display: flex; align-items: center; gap: 10px;">
                     {avatar_html}
                     <div>
-                        <div style="font-weight: 600; font-size: 0.9375rem; color: #fafafa;">{safe_name} <span style="font-weight: 400; font-size: 0.8125rem; color: #a1a1aa;">• {safe_title} at {safe_comp}</span></div>
-                        <div style="font-size: 0.75rem; color: #71717a; margin-top: 1px;">{safe_email}</div>
+                        <div style="font-weight: 600; font-size: 0.9375rem; color: #fafafa; display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                            {safe_name}
+                            <span style="font-weight: 400; font-size: 0.8125rem; color: #a1a1aa;">• {safe_title} at {safe_comp}</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px; flex-wrap: wrap;">
+                            <span style="font-size: 0.75rem; color: #71717a; font-family: var(--figma-font-mono, monospace);">{safe_email}</span>
+                            {pills_row_html}
+                        </div>
                     </div>
                 </div>
                 <div style="display: flex; align-items: center; gap: 6px;">
@@ -1701,7 +1804,7 @@ with tab_drafts:
                                             st.rerun()
 
                                     with col_e2:
-                                        if st.button("Approve", key=f"appr_email_{contact.id}"):
+                                        if st.button("Approve [A]", key=f"appr_email_{contact.id}", help="Approve draft (Shortcut: A)"):
                                             db.update_draft_status(draft.id, DraftStatus.APPROVED)
                                             db.update_contact_status(contact.id, ContactStatus.APPROVED)
                                             invalidate_dashboard_cache()
@@ -1710,9 +1813,9 @@ with tab_drafts:
 
                                     with col_e3:
                                         if is_flagged:
-                                            st.button("Send", key=f"send_email_{contact.id}", disabled=True)
+                                            st.button("Send [S]", key=f"send_email_{contact.id}", disabled=True, help="Flagged drafts cannot be sent until edited")
                                         else:
-                                            if st.button("Send", key=f"send_email_{contact.id}"):
+                                            if st.button("Send [S]", key=f"send_email_{contact.id}", help="Send email via Gmail API / Dry-run (Shortcut: S)"):
                                                 success, msg = sender.send_approved_email(
                                                     contact=contact,
                                                     draft=draft,
@@ -1726,7 +1829,7 @@ with tab_drafts:
                                                 st.rerun()
 
                                     with col_e4:
-                                        if st.button("Skip", key=f"skip_{contact.id}"):
+                                        if st.button("Skip [K]", key=f"skip_{contact.id}", help="Skip prospect (Shortcut: K)"):
                                             db.update_contact_status(contact.id, ContactStatus.SKIPPED)
                                             invalidate_dashboard_cache()
                                             st.info("Skipped.")
