@@ -655,6 +655,70 @@ st.markdown(
         border-color: #27272a !important;
         margin: 1.25rem 0 !important;
     }
+
+    /* Ambient Glow & Glassmorphism Surfaces */
+    .glass-panel {
+        background: rgba(18, 18, 21, 0.7) !important;
+        backdrop-filter: blur(20px) !important;
+        -webkit-backdrop-filter: blur(20px) !important;
+        border: 1px solid rgba(255, 255, 255, 0.08) !important;
+        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.45) !important;
+    }
+
+    .ambient-glow {
+        position: relative;
+    }
+    .ambient-glow::after {
+        content: '';
+        position: absolute;
+        top: -1px;
+        left: 15%;
+        right: 15%;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, rgba(132, 204, 22, 0.6), transparent);
+    }
+
+    /* Smooth Micro-animations */
+    @keyframes pulse-subtle {
+        0%, 100% { opacity: 1; transform: scale(1); }
+        50% { opacity: 0.85; transform: scale(1.02); }
+    }
+    .pulse-glow {
+        animation: pulse-subtle 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+
+    /* Stat Card Highlighting with Vibrant Top Gradient */
+    .shadcn-card {
+        position: relative;
+        overflow: hidden;
+    }
+    .shadcn-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background: linear-gradient(90deg, transparent, rgba(132, 204, 22, 0.4), transparent);
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+    .shadcn-card:hover::before {
+        opacity: 1;
+    }
+
+    /* Streamlit DataFrame Scrollbar Aesthetic */
+    div[data-testid="stDataFrame"] div[tabindex="0"]::-webkit-scrollbar {
+        height: 6px !important;
+        width: 6px !important;
+    }
+    div[data-testid="stDataFrame"] div[tabindex="0"]::-webkit-scrollbar-thumb {
+        background: #27272a !important;
+        border-radius: 9999px !important;
+    }
+    div[data-testid="stDataFrame"] div[tabindex="0"]::-webkit-scrollbar-thumb:hover {
+        background: var(--figma-accent) !important;
+    }
     </style>
     """,
     unsafe_allow_html=True,
@@ -1022,15 +1086,23 @@ limit_today = getattr(getattr(config, "limits", None), "emails_per_day", 5)
 webhook_configured = bool(getattr(config, "lead_alert_webhook_url", None) or os.getenv("LEAD_ALERT_WEBHOOK_URL"))
 
 
-# ShadCN Header
+# Modern Hero Header with Ambient Glow & Badges
 col_h1, col_h2 = st.columns([3, 1])
 with col_h1:
     st.markdown("""
-    <div style="margin-bottom: 0.75rem;">
-        <h1 style="font-size: 1.85rem; font-weight: 700; letter-spacing: -0.03em; margin: 0; color: #fafafa;">almost normal <span style="font-weight: 400; font-size: 1.25rem; color: #84cc16;">• Outreach Studio</span></h1>
-        <p style="font-size: 0.875rem; color: #a1a1aa; margin: 0.25rem 0 0 0;">Autonomous prospect research, verified-fact personalization, and compliant cold messaging.</p>
+    <div class="ambient-glow" style="margin-bottom: 1rem; padding-top: 0.5rem;">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+            <span class="shadcn-badge" style="background: rgba(132, 204, 22, 0.12); color: #84cc16; border: 1px solid rgba(132, 204, 22, 0.3); font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;">B2B Intelligence Suite</span>
+            <span style="font-size: 0.72rem; color: #52525b;">•</span>
+            <span style="font-size: 0.75rem; color: #71717a; font-family: var(--figma-font-mono);">v2.4 Production</span>
+        </div>
+        <h1 style="font-size: 2.1rem; font-weight: 800; letter-spacing: -0.04em; margin: 0; color: #fafafa; line-height: 1.15;">
+            almost normal <span style="font-weight: 400; font-size: 1.35rem; color: #84cc16;">• Outreach Studio</span>
+        </h1>
+        <p style="font-size: 0.9rem; color: #a1a1aa; margin: 0.4rem 0 0 0; line-height: 1.5; max-width: 680px;">
+            Autonomous prospect discovery, verified-fact personalization, and compliant cold messaging across Email, WhatsApp, and LinkedIn.
+        </p>
     </div>
-
     """, unsafe_allow_html=True)
 with col_h2:
     if db.is_supabase:
@@ -1038,7 +1110,7 @@ with col_h2:
     else:
         db_badge_top = shadcn_badge("Local Mode", "secondary")
     webhook_badge_top = shadcn_badge("Webhook Connected", "success") if webhook_configured else shadcn_badge("Webhook Offline", "secondary")
-    st.markdown(f'<div style="text-align: right; padding-top: 0.5rem; display: flex; justify-content: flex-end; gap: 6px;">{db_badge_top}{webhook_badge_top}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div style="text-align: right; padding-top: 1.5rem; display: flex; justify-content: flex-end; align-items: center; gap: 8px;">{db_badge_top}{webhook_badge_top}</div>', unsafe_allow_html=True)
 
 # ShadCN KPI Stat Cards
 kpi1, kpi2, kpi3, kpi4, kpi5 = st.columns(5)
