@@ -908,11 +908,22 @@ draft_gen = DraftGenerator(config, db)
 sender = OutreachSender(config, db)
 suppression_mgr = SuppressionManager(db)
 
-# Cached database loader (Requirement 4: Wrap contact loading in st.cache_data)
-@st.cache_data(show_spinner=False)
-def load_all_contacts(backend_name: str, db_path: str):
+# Cached dashboard data loader (Aggregates and memoizes metadata and contacts to avoid redundant round-trips on every rerun)
+@st.cache_data(show_spinner=False, ttl=30)
+def load_dashboard_cache(backend_name: str, db_path: str):
     database = Database(db_path, config=config)
-    return database.list_contacts()
+    contacts = database.list_contacts()
+    drafts = database.list_all_drafts()
+    dossiers = database.list_all_dossiers()
+    suppressed = database.list_suppressed()
+    sent_today = database.get_today_sent_count()
+    logs = database.list_send_logs(limit=100)
+    return contacts, drafts, dossiers, suppressed, sent_today, logs
+
+
+def invalidate_dashboard_cache():
+    """Clears the memoized dashboard cache when data changes."""
+    load_dashboard_cache.clear()
 
 
 @st.cache_data(show_spinner=False)
@@ -1156,7 +1167,7 @@ with st.sidebar:
                 if st.button("⚡ Fast Import Only (Recommended)", type="primary", key="btn_import_only", use_container_width=True):
                     with st.spinner(f"Importing {len(parsed_contacts)} contacts..."):
                         imported_count = import_contacts_to_db(db, parsed_contacts)
-                    load_all_contacts.clear()
+                    invalidate_dashboard_cache()
                     st.success(f"Successfully imported {imported_count} contacts!")
                     st.rerun()
 
@@ -1191,7 +1202,7 @@ with st.sidebar:
                             st.warning("⚠️ Daily Gemini rate/quota limit reached. Remaining contacts were imported safely.")
                         except Exception as e:
                             st.error(f"Error during draft generation: {e}")
-                    load_all_contacts.clear()
+                    invalidate_dashboard_cache()
                     st.success(f"Imported contacts and created drafts for {imported_count} prospects.")
                     st.rerun()
 
@@ -1203,10 +1214,10 @@ with st.sidebar:
             st.rerun()
 
 
-# Main Dashboard
-all_contacts = load_all_contacts(db.backend_name, config.db_path)
-all_drafts_map = db.list_all_drafts()
-all_dossiers_map = db.list_all_dossiers()
+# Main Dashboard (Memoized fast fetch)
+all_contacts, all_drafts_map, all_dossiers_map, suppressed_all, sent_today, all_logs = load_dashboard_cache(
+    db.backend_name, config.db_path
+)
 
 total_count = len(all_contacts)
 approved_count = sum(1 for c in all_contacts if get_contact_status_str(c) == "APPROVED")
@@ -1215,9 +1226,7 @@ flagged_count = sum(1 for c in all_contacts if (d := all_drafts_map.get(c.id)) a
 hot_leads_count = sum(1 for c in all_contacts if get_contact_status_str(c) == "HOT_LEAD")
 replied_count = sum(1 for c in all_contacts if get_contact_status_str(c) in ("REPLIED", "HOT_LEAD"))
 follow_up_later_count = sum(1 for c in all_contacts if get_contact_status_str(c) == "FOLLOW_UP_LATER")
-suppressed_all = db.list_suppressed()
 suppression_count = len(suppressed_all)
-sent_today = db.get_today_sent_count()
 limit_today = getattr(getattr(config, "limits", None), "emails_per_day", 5)
 webhook_configured = bool(getattr(config, "lead_alert_webhook_url", None) or os.getenv("LEAD_ALERT_WEBHOOK_URL"))
 
@@ -1308,7 +1317,7 @@ with tab_analytics:
     </div>
     """, unsafe_allow_html=True)
 
-    all_logs = db.list_send_logs(limit=100)
+    # Uses memoized all_logs from load_dashboard_cache
     total_dispatched_all_time = len(all_logs)
     live_dispatched = sum(1 for l in all_logs if not l.is_dry_run and l.status == "SENT")
     simulated_dispatched = sum(1 for l in all_logs if l.is_dry_run and l.status in ("SENT", "SIMULATED"))
@@ -1448,7 +1457,7 @@ with tab_analytics:
 
 # ----------------- TAB 1: DRAFTS -----------------
 with tab_drafts:
-    unprocessed_contacts = [c for c in all_contacts if not db.get_draft(c.id)]
+    unprocessed_contacts = [c for c in all_contacts if not all_drafts_map.get(c.id)]
 
     # Persistent toolbar container (prevents vertical layout shift on first load)
     toolbar_container = st.container()
@@ -1471,7 +1480,7 @@ with tab_drafts:
                     except GeminiQuotaError:
                         st.error("⚠️ Daily free Gemini quota reached. Generation stopped. Try again tomorrow.")
                         st.stop()
-                    load_all_contacts.clear()
+                    invalidate_dashboard_cache()
                     st.success(f"Generated drafts for {len(unprocessed_contacts)} contacts.")
                     st.rerun()
 
@@ -1509,9 +1518,27 @@ with tab_drafts:
     if not filtered_contacts:
         st.info("No contacts matching this filter.")
     else:
-        st.caption(f"Showing {len(filtered_contacts)} prospects")
+        # High-Performance Pagination: Window rendering to 15 cards per page to prevent UI lag with large lead lists
+        PAGE_SIZE = 15
+        total_pages = max(1, (len(filtered_contacts) + PAGE_SIZE - 1) // PAGE_SIZE)
+        
+        col_p1, col_p2 = st.columns([3, 1])
+        with col_p1:
+            st.caption(f"Showing {len(filtered_contacts)} prospects • Page {st.session_state.get('drafts_page', 1)} of {total_pages}")
+        with col_p2:
+            current_page = st.selectbox(
+                "Page",
+                options=list(range(1, total_pages + 1)),
+                index=min(st.session_state.get("drafts_page", 1) - 1, total_pages - 1),
+                key="drafts_page",
+                label_visibility="collapsed",
+            )
 
-        for contact in filtered_contacts:
+        start_idx = (current_page - 1) * PAGE_SIZE
+        end_idx = start_idx + PAGE_SIZE
+        paginated_contacts = filtered_contacts[start_idx:end_idx]
+
+        for contact in paginated_contacts:
             dossier = all_dossiers_map.get(contact.id)
             draft = all_drafts_map.get(contact.id)
             is_flagged = bool(draft and getattr(draft, "status", None) == DraftStatus.FLAGGED)
@@ -1604,7 +1631,7 @@ with tab_drafts:
                                             new_dossier = dossier_builder.build_dossier(contact, user_pasted_linkedin=pasted_info)
                                             db.save_dossier(new_dossier)
                                             new_draft = draft_gen.generate_for_contact(contact, new_dossier)
-                                            load_all_contacts.clear()
+                                            invalidate_dashboard_cache()
                                             st.success("Draft generated.")
                                             st.rerun()
                                         except GeminiQuotaError:
@@ -1669,7 +1696,7 @@ with tab_drafts:
                                                 whatsapp_message=draft.whatsapp_message,
                                                 status=DraftStatus.EDITED,
                                             )
-                                            load_all_contacts.clear()
+                                            invalidate_dashboard_cache()
                                             st.success("Saved.")
                                             st.rerun()
 
@@ -1677,7 +1704,7 @@ with tab_drafts:
                                         if st.button("Approve", key=f"appr_email_{contact.id}"):
                                             db.update_draft_status(draft.id, DraftStatus.APPROVED)
                                             db.update_contact_status(contact.id, ContactStatus.APPROVED)
-                                            load_all_contacts.clear()
+                                            invalidate_dashboard_cache()
                                             st.success("Approved.")
                                             st.rerun()
 
@@ -1691,7 +1718,7 @@ with tab_drafts:
                                                     draft=draft,
                                                     force_dry_run=dry_run_active,
                                                 )
-                                                load_all_contacts.clear()
+                                                invalidate_dashboard_cache()
                                                 if success:
                                                     st.success(msg)
                                                 else:
@@ -1701,7 +1728,7 @@ with tab_drafts:
                                     with col_e4:
                                         if st.button("Skip", key=f"skip_{contact.id}"):
                                             db.update_contact_status(contact.id, ContactStatus.SKIPPED)
-                                            load_all_contacts.clear()
+                                            invalidate_dashboard_cache()
                                             st.info("Skipped.")
                                             st.rerun()
 
@@ -1737,7 +1764,7 @@ with tab_drafts:
                                                 whatsapp_message=editable_wa,
                                                 status=DraftStatus.EDITED,
                                             )
-                                            load_all_contacts.clear()
+                                            invalidate_dashboard_cache()
                                             st.success("Saved.")
                                             st.rerun()
 
@@ -1763,7 +1790,7 @@ with tab_drafts:
                                                 status="SENT",
                                             )
                                             db.log_send(send_log)
-                                            load_all_contacts.clear()
+                                            invalidate_dashboard_cache()
                                             st.success("Marked as WhatsApp sent and logged.")
                                             st.rerun()
 
@@ -1786,7 +1813,7 @@ with tab_drafts:
                                     with col_li2:
                                         if st.button("Mark sent", key=f"mark_li_{contact.id}"):
                                             db.update_contact_status(contact.id, ContactStatus.LINKEDIN_SENT)
-                                            load_all_contacts.clear()
+                                            invalidate_dashboard_cache()
                                             st.success("Marked as sent.")
                                             st.rerun()
 
@@ -1800,7 +1827,7 @@ with tab_sent:
     </div>
     """, unsafe_allow_html=True)
 
-    logs = db.list_send_logs(limit=50)
+    logs = all_logs[:50]
     if not logs:
         st.info("No dispatch logs recorded yet.")
     else:
@@ -1828,12 +1855,12 @@ with tab_followups:
     </div>
     """, unsafe_allow_html=True)
 
-    contacts_for_fu = db.list_contacts(ContactStatus.EMAIL_SENT)
+    contacts_for_fu = [c for c in all_contacts if getattr(c, "status", None) == ContactStatus.EMAIL_SENT]
     if not contacts_for_fu:
         st.markdown(shadcn_callout("No contacts currently pending secondary follow-up touchpoints.", title="Queue Empty", variant="info"), unsafe_allow_html=True)
     else:
         for contact in contacts_for_fu:
-            draft = db.get_draft(contact.id)
+            draft = all_drafts_map.get(contact.id)
             if draft and draft.followup_body:
                 with st.expander(f"**{contact.full_name}** — {contact.company}"):
                     st.markdown(f"**Subject:** `{draft.followup_subject}`")
@@ -1850,6 +1877,7 @@ with tab_followups:
                     with col_fu2:
                         if st.button("Mark replied", key=f"replied_{contact.id}"):
                             db.update_contact_status(contact.id, ContactStatus.REPLIED)
+                            invalidate_dashboard_cache()
                             st.success(f"Marked {contact.email} as replied.")
                             st.rerun()
 
@@ -1872,10 +1900,11 @@ with tab_suppression:
         add_sup = st.form_submit_button("Add to Suppression", type="primary")
         if add_sup and sup_email:
             suppression_mgr.suppress_contact(sup_email, reason=sup_reason)
+            invalidate_dashboard_cache()
             st.success(f"Suppressed {sup_email}.")
             st.rerun()
 
-    suppressed = db.list_suppressed()
+    suppressed = suppressed_all
     if suppressed:
         st.dataframe(
             [{"Email": s.email, "Reason": s.reason, "Opted Out At": s.opted_out_at[:19]} for s in suppressed],
