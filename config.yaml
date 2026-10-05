@@ -28,6 +28,7 @@ limits:
 
 llm:
   provider: "gemini"
+  model: "gemini-flash-lite-latest"
 
 database:
   backend: "auto"  # "auto", "supabase", or "sqlite"

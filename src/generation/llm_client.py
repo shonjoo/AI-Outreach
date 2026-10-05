@@ -49,6 +49,13 @@ class LLMClient:
             except Exception as e:
                 logger.warning(f"Could not initialize Google GenAI client: {e}")
 
+    def _get_candidate_models(self) -> List[str]:
+        configured = getattr(self.config.llm, "model", None) or "gemini-flash-lite-latest"
+        candidates = [configured, "gemini-flash-lite-latest", "gemini-3.5-flash-lite", "gemini-3.5-flash"]
+        # Deduplicate while preserving priority order
+        seen = set()
+        return [m for m in candidates if not (m in seen or seen.add(m))]
+
     def generate_drafts(
         self,
         contact: Contact,
@@ -58,25 +65,33 @@ class LLMClient:
     ) -> Dict[str, Any]:
         """Generates outreach drafts using Gemini or offline mock."""
         if self.gemini_client:
-            try:
-                response = self.gemini_client.models.generate_content(
-                    model="gemini-3.8-flash",
-                    contents=user_prompt,
-                    config={
-                        "system_instruction": system_prompt,
-                        "response_mime_type": "application/json",
-                        "temperature": 0.3,
-                    },
-                )
-                text = response.text or ""
-                return self._parse_json(text)
-            except Exception as e:
-                if _is_quota_error(e):
-                    raise GeminiQuotaError(
-                        "Daily free quota reached, try again tomorrow."
-                    ) from e
-                logger.error(f"Gemini generation error: {e}. Falling back to offline generator.")
+            last_err = None
+            for model_name in self._get_candidate_models():
+                try:
+                    response = self.gemini_client.models.generate_content(
+                        model=model_name,
+                        contents=user_prompt,
+                        config={
+                            "system_instruction": system_prompt,
+                            "response_mime_type": "application/json",
+                            "temperature": 0.3,
+                        },
+                    )
+                    text = response.text or ""
+                    return self._parse_json(text)
+                except Exception as e:
+                    last_err = e
+                    if _is_quota_error(e):
+                        logger.warning(f"Quota / rate limit hit on model '{model_name}': {e}. Trying next candidate model...")
+                        continue
+                    logger.warning(f"Gemini error on model '{model_name}': {e}. Trying next candidate model...")
 
+            if last_err and _is_quota_error(last_err):
+                raise GeminiQuotaError(
+                    "Daily free quota reached across Gemini models, try again tomorrow."
+                ) from last_err
+            if last_err:
+                logger.error(f"All Gemini generation models failed ({last_err}). Falling back to offline generator.")
 
         # Fallback / Offline Grounded Generator
         return self._generate_offline_grounded(contact, dossier)
@@ -104,23 +119,32 @@ class LLMClient:
         prompt = f"VERIFIED FACTS:\n{facts_text}\n\nDRAFT:\n{draft_text}"
 
         if self.gemini_client:
-            try:
-                response = self.gemini_client.models.generate_content(
-                    model="gemini-3.8-flash",
-                    contents=prompt,
-                    config={
-                        "system_instruction": system_instruction,
-                        "response_mime_type": "application/json",
-                        "temperature": 0.0,
-                    },
-                )
-                return self._parse_json(response.text or "{}")
-            except Exception as e:
-                if _is_quota_error(e):
-                    raise GeminiQuotaError(
-                        "Daily free quota reached, try again tomorrow."
-                    ) from e
-                logger.error(f"Gemini grounding check error: {e}")
+            last_err = None
+            for model_name in self._get_candidate_models():
+                try:
+                    response = self.gemini_client.models.generate_content(
+                        model=model_name,
+                        contents=prompt,
+                        config={
+                            "system_instruction": system_instruction,
+                            "response_mime_type": "application/json",
+                            "temperature": 0.0,
+                        },
+                    )
+                    return self._parse_json(response.text or "{}")
+                except Exception as e:
+                    last_err = e
+                    if _is_quota_error(e):
+                        logger.warning(f"Quota / rate limit hit on grounding check with '{model_name}': {e}. Trying next...")
+                        continue
+                    logger.warning(f"Gemini grounding check error on '{model_name}': {e}. Trying next...")
+
+            if last_err and _is_quota_error(last_err):
+                raise GeminiQuotaError(
+                    "Daily free quota reached across Gemini models, try again tomorrow."
+                ) from last_err
+            if last_err:
+                logger.error(f"All Gemini grounding check models failed ({last_err}). Falling back to offline check.")
 
 
         # Fallback offline grounding check

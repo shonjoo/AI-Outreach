@@ -79,6 +79,7 @@ class LimitsConfig:
 @dataclass
 class LLMConfig:
     provider: str = "gemini"
+    model: str = "gemini-flash-lite-latest"
     gemini_api_key: Optional[str] = None
 
 
@@ -177,6 +178,7 @@ def load_config(config_path: str = "config.yaml") -> AppConfig:
     llm_data = data.get("llm", {})
     llm = LLMConfig(
         provider=llm_data.get("provider", "gemini"),
+        model=os.getenv("GEMINI_MODEL") or llm_data.get("model", "gemini-flash-lite-latest"),
         gemini_api_key=os.getenv("GEMINI_API_KEY"),
     )
 
