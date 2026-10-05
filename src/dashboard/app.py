@@ -719,6 +719,116 @@ st.markdown(
     div[data-testid="stDataFrame"] div[tabindex="0"]::-webkit-scrollbar-thumb:hover {
         background: var(--figma-accent) !important;
     }
+
+    /* ==========================================================================
+       HIGH-REFRESH-RATE DISPLAY OPTIMIZATIONS (60Hz, 120Hz, 144Hz, 180Hz, 240Hz)
+       ========================================================================== */
+    /* Force GPU compositing, hardware rasterization, subpixel antialiasing & zero jank */
+    *, *::before, *::after {
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        text-rendering: optimizeLegibility;
+    }
+
+    /* Composited GPU layers for interactive components */
+    .shadcn-card,
+    .shadcn-badge,
+    .shadcn-avatar,
+    button,
+    [data-testid="stButton"] > button,
+    [data-testid="stLinkButton"] > a,
+    div[data-testid="stTabs"] button[role="tab"],
+    div[data-testid="stExpander"],
+    div[data-testid="stExpander"] summary {
+        transform: translateZ(0);
+        backface-visibility: hidden;
+        -webkit-backface-visibility: hidden;
+        perspective: 1000px;
+    }
+
+    /* 60Hz - 240Hz Adaptive Motion:
+       Using transform + opacity exclusively allows the browser compositor thread
+       to animate at the native display refresh rate without triggering main-thread reflows */
+    @media (prefers-reduced-motion: no-preference) {
+        .shadcn-card,
+        button,
+        [data-testid="stButton"] > button,
+        div[data-testid="stTabs"] button[role="tab"] {
+            transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1) !important;
+        }
+    }
+
+    /* Accessibility Fallback */
+    @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
+            scroll-behavior: auto !important;
+        }
+    }
+
+    /* ==========================================================================
+       RESPONSIVE DISPLAY OPTIMIZATIONS ACROSS ALL SCREEN SIZES
+       (UltraWide 1440p/4K, Standard Desktop, Laptop, Tablet, Mobile)
+       ========================================================================== */
+    /* UltraWide & 4K Displays (>= 1920px) */
+    @media (min-width: 1920px) {
+        div[data-testid="stAppViewBlockContainer"] {
+            max-width: 1600px !important;
+            padding-left: 2rem !important;
+            padding-right: 2rem !important;
+        }
+        .shadcn-card-value {
+            font-size: 1.75rem !important;
+        }
+    }
+
+    /* Standard Desktop & 1440p Displays (1280px - 1919px) */
+    @media (min-width: 1280px) and (max-width: 1919px) {
+        div[data-testid="stAppViewBlockContainer"] {
+            max-width: 1360px !important;
+        }
+    }
+
+    /* Compact Laptops & Tablets (768px - 1279px) */
+    @media (max-width: 1279px) {
+        div[data-testid="stAppViewBlockContainer"] {
+            padding-left: 1rem !important;
+            padding-right: 1rem !important;
+            padding-top: 1.25rem !important;
+        }
+        .shadcn-card {
+            padding: 0.85rem 1rem !important;
+        }
+        .shadcn-card-value {
+            font-size: 1.35rem !important;
+        }
+    }
+
+    /* Mobile Phones (< 768px) */
+    @media (max-width: 767px) {
+        div[data-testid="stAppViewBlockContainer"] {
+            padding-left: 0.75rem !important;
+            padding-right: 0.75rem !important;
+            padding-top: 1rem !important;
+        }
+        h1 {
+            font-size: 1.45rem !important;
+        }
+        div[data-testid="stTabs"] > div:first-child {
+            display: flex !important;
+            flex-wrap: wrap !important;
+            width: 100% !important;
+        }
+        div[data-testid="stTabs"] button[role="tab"] {
+            flex: 1 1 auto !important;
+            text-align: center !important;
+        }
+        .shadcn-card {
+            margin-bottom: 0.5rem !important;
+        }
+    }
     </style>
     """,
     unsafe_allow_html=True,
