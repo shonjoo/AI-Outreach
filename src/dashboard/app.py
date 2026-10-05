@@ -848,6 +848,7 @@ follow_up_later_count = sum(1 for c in all_contacts if c.status == ContactStatus
 suppressed_all = db.list_suppressed()
 suppression_count = len(suppressed_all)
 sent_today = db.get_today_sent_count()
+limit_today = getattr(getattr(config, "limits", None), "emails_per_day", 5)
 webhook_configured = bool(getattr(config, "lead_alert_webhook_url", None) or os.getenv("LEAD_ALERT_WEBHOOK_URL"))
 
 
