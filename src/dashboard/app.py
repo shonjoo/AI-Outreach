@@ -1,6 +1,7 @@
 """Interactive Review Dashboard for personalized outreach automation."""
 
 import csv
+import html
 import io
 import os
 import re
@@ -1317,13 +1318,19 @@ with tab_drafts:
             title_text = contact.job_title or "Owner / Founder"
             expander_label = f"{contact.full_name} — {title_text}, {contact.company} [{contact_status_str}]{flagged_tag}"
 
+            # Sanitize untrusted user-supplied data for HTML rendering
+            safe_name = html.escape(contact.full_name)
+            safe_title = html.escape(title_text)
+            safe_comp = html.escape(contact.company)
+            safe_email = html.escape(contact.email)
+
             st.markdown(f"""
             <div style="background-color: #0c0d0e; border: 1px solid var(--figma-border); border-radius: var(--figma-radius-md) var(--figma-radius-md) 0 0; padding: 0.75rem 1rem; display: flex; align-items: center; justify-content: space-between; margin-bottom: -1px;">
                 <div style="display: flex; align-items: center; gap: 10px;">
                     {avatar_html}
                     <div>
-                        <div style="font-weight: 600; font-size: 0.9375rem; color: #fafafa;">{contact.full_name} <span style="font-weight: 400; font-size: 0.8125rem; color: #a1a1aa;">• {title_text} at {contact.company}</span></div>
-                        <div style="font-size: 0.75rem; color: #71717a; margin-top: 1px;">{contact.email}</div>
+                        <div style="font-weight: 600; font-size: 0.9375rem; color: #fafafa;">{safe_name} <span style="font-weight: 400; font-size: 0.8125rem; color: #a1a1aa;">• {safe_title} at {safe_comp}</span></div>
+                        <div style="font-size: 0.75rem; color: #71717a; margin-top: 1px;">{safe_email}</div>
                     </div>
                 </div>
                 <div style="display: flex; align-items: center; gap: 6px;">
@@ -1410,10 +1417,11 @@ with tab_drafts:
                                     st.error("Flagged: Draft failed validation or fact-grounding. Manual edit and approval required before sending.")
 
                                 # 1-Line Hook with ShadCN Callout styling
+                                safe_hook = html.escape(draft.hook or "")
                                 st.markdown(f"""
                                 <div style="background-color: #18181b; border: 1px solid #27272a; border-left: 3px solid #fafafa; border-radius: 6px; padding: 10px 14px; margin-bottom: 12px;">
                                     <div style="font-size: 0.7rem; font-weight: 600; text-transform: uppercase; color: #a1a1aa; letter-spacing: 0.05em;">Fact-Grounded Observation</div>
-                                    <div style="font-size: 0.875rem; color: #f4f4f5; margin-top: 4px; font-style: italic;">"{draft.hook}"</div>
+                                    <div style="font-size: 0.875rem; color: #f4f4f5; margin-top: 4px; font-style: italic;">"{safe_hook}"</div>
                                 </div>
                                 """, unsafe_allow_html=True)
                                 if draft.source_facts:
