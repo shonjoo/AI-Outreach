@@ -925,8 +925,8 @@ def get_cached_excel_sheets(file_bytes: bytes):
     return get_excel_sheet_info(file_bytes)
 
 # Remote Access Security: Secret Link Token & Password Gate
-configured_token = config.dashboard_access_token or os.getenv("DASHBOARD_ACCESS_TOKEN", "").strip()
-configured_password = config.dashboard_password or os.getenv("DASHBOARD_PASSWORD", "").strip()
+configured_token = getattr(config, "dashboard_access_token", None) or os.getenv("DASHBOARD_ACCESS_TOKEN", "").strip()
+configured_password = getattr(config, "dashboard_password", None) or os.getenv("DASHBOARD_PASSWORD", "").strip()
 auth_required = bool(configured_token or configured_password)
 
 if auth_required:
