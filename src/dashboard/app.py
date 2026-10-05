@@ -21,7 +21,7 @@ from src.research.dossier import DossierBuilder
 from src.sending.sender import OutreachSender
 from src.sending.suppression import SuppressionManager
 from src.sending.worker import DispatchWorker
-from src.db.csv_importer import import_contacts_to_db, parse_any_lead_file
+from src.db.csv_importer import get_excel_sheet_info, import_contacts_to_db, parse_any_lead_file
 
 
 # Streamlit Page Config (Very first call, wide layout, expanded sidebar)
@@ -738,6 +738,16 @@ def load_all_contacts(backend_name: str, db_path: str):
     database = Database(db_path, config=config)
     return database.list_contacts()
 
+
+@st.cache_data(show_spinner=False)
+def parse_uploaded_lead_file(file_bytes: bytes, filename: str, target_sheet: Optional[str] = None):
+    return parse_any_lead_file(file_bytes, filename, target_sheet=target_sheet)
+
+
+@st.cache_data(show_spinner=False)
+def get_cached_excel_sheets(file_bytes: bytes):
+    return get_excel_sheet_info(file_bytes)
+
 # Remote Access Security: Dashboard Password Gate
 dashboard_password = os.getenv("DASHBOARD_PASSWORD", "").strip()
 
@@ -893,69 +903,93 @@ with st.sidebar:
         # If Excel workbook, check available sheets
         target_sheet = None
         if fname.lower().endswith((".xlsx", ".xlsm")):
-            try:
-                import openpyxl
-                wb_preview = openpyxl.load_workbook(io.BytesIO(file_bytes), read_only=True)
-                sheets = wb_preview.sheetnames
+            sheet_info = get_cached_excel_sheets(file_bytes)
+            if sheet_info:
+                # Build formatted options: All Sheets first, then individual sheets with row estimates
+                options_map = {"__ALL_SHEETS__": "✨ All Sheets (Combined)"}
                 default_idx = 0
-                for i, s in enumerate(sheets):
-                    if any(w in s.lower() for w in ["niche", "fit", "lead", "contact"]):
-                        default_idx = i
-                        break
-                target_sheet = st.selectbox("Sheet:", sheets, index=default_idx)
-            except Exception as e:
-                st.warning(f"Could not read sheets: {e}")
+                for idx, (s_name, r_count) in enumerate(sheet_info):
+                    label = f"{s_name} (~{r_count} rows)" if r_count > 0 else s_name
+                    options_map[s_name] = label
+                    # Auto-select the first niche/leads/fit sheet
+                    if default_idx == 0 and any(w in s_name.lower() for w in ["niche", "fit", "lead", "contact"]):
+                        default_idx = idx + 1  # offset by 1 because __ALL_SHEETS__ is at index 0
 
-        parsed_contacts, parse_errors, meta = parse_any_lead_file(
-            file_bytes=file_bytes,
-            filename=fname,
-            target_sheet=target_sheet,
-        )
+                selected_label = st.selectbox(
+                    "Select Sheet:",
+                    options=list(options_map.values()),
+                    index=default_idx,
+                    help="Choose a specific tab or import leads from all tabs combined."
+                )
+                # Map back to sheet key
+                rev_map = {v: k for k, v in options_map.items()}
+                target_sheet = rev_map.get(selected_label, "__ALL_SHEETS__")
+
+        with st.spinner("Analyzing contacts..."):
+            parsed_contacts, parse_errors, meta = parse_uploaded_lead_file(
+                file_bytes=file_bytes,
+                filename=fname,
+                target_sheet=target_sheet,
+            )
 
         if parse_errors:
             for err in parse_errors:
                 st.error(err)
 
         if parsed_contacts:
-            st.success(f"Found {len(parsed_contacts)} contacts.")
+            st.success(f"✓ Found {len(parsed_contacts)} contacts ready to import.")
 
             # Show preview
-            with st.expander("Preview contacts", expanded=False):
+            with st.expander(f"Preview contacts ({min(5, len(parsed_contacts))} of {len(parsed_contacts)})", expanded=False):
                 preview_data = [
-                    {"Name": c.full_name, "Company": c.company, "Title": c.job_title, "LinkedIn": bool(c.linkedin_url)}
+                    {"Name": c.full_name, "Company": c.company, "Title": c.job_title, "Email": c.email, "LinkedIn": bool(c.linkedin_url)}
                     for c in parsed_contacts[:5]
                 ]
-                st.dataframe(preview_data)
+                st.dataframe(preview_data, use_container_width=True)
 
             col_u1, col_u2 = st.columns([1, 1])
             with col_u1:
-                if st.button("Import and generate", type="primary", key="btn_import_gen"):
+                # Fast direct import (Recommended for bulk leads)
+                if st.button("⚡ Fast Import Only (Recommended)", type="primary", key="btn_import_only", use_container_width=True):
+                    with st.spinner(f"Importing {len(parsed_contacts)} contacts..."):
+                        imported_count = import_contacts_to_db(db, parsed_contacts)
+                    load_all_contacts.clear()
+                    st.success(f"Successfully imported {imported_count} contacts!")
+                    st.rerun()
+
+            with col_u2:
+                # Batch generation button with safety cap note
+                btn_gen_label = "Import + Generate Drafts"
+                if len(parsed_contacts) > 10:
+                    btn_gen_label = f"Import + Generate Drafts (First 10)"
+                
+                if st.button(btn_gen_label, key="btn_import_gen", use_container_width=True):
+                    contacts_to_generate = parsed_contacts[:10] if len(parsed_contacts) > 10 else parsed_contacts
                     imported_count = 0
-                    with st.spinner("Processing..."):
+                    with st.spinner("Processing research and drafts..."):
                         progress_bar = st.progress(0.0)
                         try:
-                            for idx, contact in enumerate(parsed_contacts):
-                                cid = db.insert_contact(contact)
-                                contact.id = cid
+                            # Pre-import batch to ensure contacts are in DB
+                            import_contacts_to_db(db, parsed_contacts)
+                            for idx, contact in enumerate(contacts_to_generate):
+                                # Ensure we have DB id
+                                existing = db.get_contact_by_email(contact.email) if hasattr(db, "get_contact_by_email") else None
+                                if existing:
+                                    contact.id = existing.id
+                                else:
+                                    contact.id = db.insert_contact(contact)
                                 imported_count += 1
                                 # Research & Draft
                                 dossier = dossier_builder.build_dossier(contact)
                                 db.save_dossier(dossier)
                                 draft_gen.generate_for_contact(contact, dossier)
-                                progress_bar.progress((idx + 1) / len(parsed_contacts))
+                                progress_bar.progress((idx + 1) / len(contacts_to_generate))
                         except GeminiQuotaError:
-                            st.error("⚠️ Daily free Gemini quota reached. Generation stopped. Try again tomorrow.")
-                            st.stop()
+                            st.warning("⚠️ Daily Gemini rate/quota limit reached. Remaining contacts were imported safely.")
+                        except Exception as e:
+                            st.error(f"Error during draft generation: {e}")
                     load_all_contacts.clear()
-                    st.success(f"Imported and generated drafts for {imported_count} contacts.")
-                    st.rerun()
-
-
-            with col_u2:
-                if st.button("Import only", key="btn_import_only"):
-                    imported_count = import_contacts_to_db(db, parsed_contacts)
-                    load_all_contacts.clear()
-                    st.success(f"Imported {imported_count} contacts.")
+                    st.success(f"Imported contacts and created drafts for {imported_count} prospects.")
                     st.rerun()
 
 

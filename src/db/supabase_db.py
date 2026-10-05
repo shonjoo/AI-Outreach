@@ -93,11 +93,81 @@ class SupabaseDatabase:
             return int(res.data[0]["id"])
         raise RuntimeError("Failed to insert contact into Supabase.")
 
+    def insert_contacts_batch(self, contacts: List[Contact]) -> int:
+        """Batch upserts multiple contacts into Supabase in chunks to avoid single HTTP roundtrips."""
+        if not contacts:
+            return 0
+        now = datetime.utcnow().isoformat()
+        payloads = []
+        import hashlib
+
+        for idx, contact in enumerate(contacts):
+            clean_email = contact.email.strip().lower() if contact.email else ""
+            if not clean_email or "@" not in clean_email:
+                identifier = f"{contact.linkedin_url}_{contact.first_name}_{contact.company}_{idx}".strip()
+                h = hashlib.sha256(identifier.encode()).hexdigest()[:12]
+                clean_email = f"li_{h}@linkedin-lead.local"
+
+            payloads.append({
+                "first_name": contact.first_name.strip(),
+                "last_name": contact.last_name.strip(),
+                "company": contact.company.strip(),
+                "job_title": contact.job_title.strip() if contact.job_title else "",
+                "linkedin_url": contact.linkedin_url.strip() if contact.linkedin_url else "",
+                "email": clean_email,
+                "notes": contact.notes.strip() if contact.notes else "",
+                "website": contact.website.strip() if contact.website else "",
+                "status": contact.status.value,
+                "created_at": now,
+                "updated_at": now,
+            })
+
+        # Upsert in chunks of 100 to stay well within PostgREST payload limits
+        chunk_size = 100
+        total_inserted = 0
+        for i in range(0, len(payloads), chunk_size):
+            chunk = payloads[i:i + chunk_size]
+            res = self.client.table("contacts").upsert(chunk, on_conflict="email").execute()
+            if res.data:
+                total_inserted += len(res.data)
+            else:
+                total_inserted += len(chunk)
+
+        return total_inserted
+
     def get_contact(self, contact_id: int) -> Optional[Contact]:
         res = (
             self.client.table("contacts")
             .select("*")
             .eq("id", contact_id)
+            .limit(1)
+            .execute()
+        )
+        if not res.data:
+            return None
+        row = res.data[0]
+        return Contact(
+            id=row["id"],
+            first_name=row["first_name"],
+            last_name=row["last_name"],
+            company=row["company"],
+            job_title=row.get("job_title", ""),
+            linkedin_url=row.get("linkedin_url", ""),
+            email=row["email"],
+            notes=row.get("notes", ""),
+            website=row.get("website", ""),
+            status=safe_contact_status(row.get("status")),
+            created_at=str(row["created_at"]),
+            updated_at=str(row["updated_at"]),
+        )
+
+    def get_contact_by_email(self, email: str) -> Optional[Contact]:
+        if not email:
+            return None
+        res = (
+            self.client.table("contacts")
+            .select("*")
+            .ilike("email", email.strip().lower())
             .limit(1)
             .execute()
         )

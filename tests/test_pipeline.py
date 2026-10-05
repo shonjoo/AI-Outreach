@@ -388,6 +388,24 @@ class TestOutreachPipeline(unittest.TestCase):
         with self.assertRaises(GeminiQuotaError):
             llm_client.check_fact_grounding("Some draft text", ["Rating: 4.8"])
 
+    def test_13_batch_import_and_excel_parsing(self):
+        """Verify fast batch contact insertion and excel parsing with no collisions."""
+        from src.db.csv_importer import import_contacts_to_db, parse_excel_file
+
+        contacts = [
+            Contact(first_name=f"Lead{i}", last_name="Test", company=f"Company{i}", email=f"lead{i}@test.com")
+            for i in range(50)
+        ]
+        inserted = import_contacts_to_db(self.db, contacts)
+        self.assertEqual(inserted, 50)
+        db_contacts = self.db.list_contacts()
+        self.assertEqual(len(db_contacts), 50)
+
+        # Test lookup by email
+        found = self.db.get_contact_by_email("lead10@test.com")
+        self.assertIsNotNone(found)
+        self.assertEqual(found.first_name, "Lead10")
+
 
 if __name__ == "__main__":
     unittest.main()

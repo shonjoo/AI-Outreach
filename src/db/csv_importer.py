@@ -144,14 +144,16 @@ def parse_rows_into_contacts(headers: List[str], data_rows: List[List[any]]) -> 
             extra_meta_str = " | ".join(meta_items)
             notes = f"{notes} | {extra_meta_str}".strip(" |") if notes else extra_meta_str
 
-        # If email is missing, generate unique local/phone placeholder
+        # If email is missing, generate unique local/phone placeholder with deterministic hash
         if not raw_email or "@" not in raw_email:
+            import hashlib
             if phone_found:
                 clean_phone = re.sub(r"[^0-9]", "", phone_found)
-                raw_email = f"phone_{clean_phone or abs(hash(comp))}@local-lead.local"
+                raw_email = f"phone_{clean_phone or hashlib.md5(comp.encode('utf-8', errors='ignore')).hexdigest()[:10]}@local-lead.local"
             else:
-                ident = li_url or f"{fn}_{comp}"
-                raw_email = f"local_{abs(hash(ident)) % 100000000}@local-lead.local"
+                ident = f"{li_url}_{fn}_{ln}_{comp}_{len(contacts)}".strip()
+                ident_hash = hashlib.md5(ident.encode("utf-8", errors="ignore")).hexdigest()[:10]
+                raw_email = f"local_{ident_hash}@local-lead.local"
 
         contact = Contact(
             first_name=fn or "there",
@@ -197,6 +199,21 @@ def parse_csv_file(file_bytes: bytes) -> Tuple[List[Contact], List[str], Dict[st
     return contacts, errors, {"headers": headers, "header_row": header_idx + 1}
 
 
+def get_excel_sheet_info(file_bytes: bytes) -> List[Tuple[str, int]]:
+    """Fast preview of available sheets and estimated row counts using read_only mode."""
+    try:
+        import openpyxl
+        wb = openpyxl.load_workbook(io.BytesIO(file_bytes), read_only=True, data_only=True)
+        sheet_info = []
+        for name in wb.sheetnames:
+            ws = wb[name]
+            sheet_info.append((name, ws.max_row or 0))
+        wb.close()
+        return sheet_info
+    except Exception:
+        return []
+
+
 def parse_excel_file(file_bytes: bytes, target_sheet: Optional[str] = None) -> Tuple[List[Contact], List[str], Dict[str, any]]:
     """Parses an Excel (.xlsx) file, returning contacts, errors, and metadata with available sheets."""
     try:
@@ -204,10 +221,39 @@ def parse_excel_file(file_bytes: bytes, target_sheet: Optional[str] = None) -> T
     except ImportError:
         return [], ["openpyxl library not installed. Please install it to read .xlsx files."], {}
 
-    wb = openpyxl.load_workbook(io.BytesIO(file_bytes), data_only=True)
-    all_sheets = wb.sheetnames
+    # Use read_only=True for 2-5x faster loading and minimal memory footprint
+    try:
+        wb = openpyxl.load_workbook(io.BytesIO(file_bytes), read_only=True, data_only=True)
+    except Exception as e:
+        return [], [f"Failed to open Excel workbook: {e}"], {}
 
-    # If target sheet not specified, auto-detect best candidate (prefer Niche Fit, Contacts, Leads, or skip Summary)
+    all_sheets = list(wb.sheetnames)
+
+    # Handle "All Sheets" option
+    if target_sheet == "__ALL_SHEETS__":
+        all_contacts = []
+        all_errors = []
+        for s in all_sheets:
+            if "summary" in s.lower():
+                continue
+            ws = wb[s]
+            rows = list(ws.iter_rows(values_only=True))
+            if not rows:
+                continue
+            h_idx, hdrs = find_header_row_in_matrix(rows)
+            sheet_contacts, _ = parse_rows_into_contacts(hdrs, rows[h_idx + 1 :])
+            all_contacts.extend(sheet_contacts)
+        wb.close()
+        # De-duplicate by email in case overlapping contacts exist across sheets
+        seen_emails = set()
+        deduped = []
+        for c in all_contacts:
+            if c.email not in seen_emails:
+                seen_emails.add(c.email)
+                deduped.append(c)
+        return deduped, all_errors, {"all_sheets": all_sheets, "selected_sheet": "__ALL_SHEETS__"}
+
+    # If target sheet not specified, auto-detect best candidate
     if not target_sheet or target_sheet not in all_sheets:
         target_sheet = None
         for s in all_sheets:
@@ -216,12 +262,12 @@ def parse_excel_file(file_bytes: bytes, target_sheet: Optional[str] = None) -> T
                 target_sheet = s
                 break
         if not target_sheet:
-            # Pick first sheet that isn't named "Summary"
             non_summary = [s for s in all_sheets if "summary" not in s.lower()]
             target_sheet = non_summary[0] if non_summary else all_sheets[0]
 
     ws = wb[target_sheet]
     rows = list(ws.iter_rows(values_only=True))
+    wb.close()
 
     header_idx, headers = find_header_row_in_matrix(rows)
     data_rows = rows[header_idx + 1 :]
@@ -238,14 +284,19 @@ def parse_excel_file(file_bytes: bytes, target_sheet: Optional[str] = None) -> T
 
 def parse_any_lead_file(file_bytes: bytes, filename: str, target_sheet: Optional[str] = None) -> Tuple[List[Contact], List[str], Dict[str, any]]:
     """Universal loader for CSV and XLSX files."""
-    if filename.lower().endswith(".xlsx") or filename.lower().endswith(".xlsm"):
+    if filename.lower().endswith((".xlsx", ".xlsm")):
         return parse_excel_file(file_bytes, target_sheet=target_sheet)
     else:
         return parse_csv_file(file_bytes)
 
 
 def import_contacts_to_db(db: Database, contacts: List[Contact]) -> int:
-    """Inserts a list of parsed Contact objects into the database, returning imported count."""
+    """Inserts a list of parsed Contact objects into the database using high-performance batching."""
+    if not contacts:
+        return 0
+    if hasattr(db, "insert_contacts_batch"):
+        return db.insert_contacts_batch(contacts)
+    
     count = 0
     for contact in contacts:
         db.insert_contact(contact)

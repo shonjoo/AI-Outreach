@@ -251,6 +251,57 @@ class Database:
             row = cursor.fetchone()
             return row["id"] if row else cursor.lastrowid
 
+    def insert_contacts_batch(self, contacts: List[Contact]) -> int:
+        """Batch inserts multiple contacts in a single transaction for high performance."""
+        if not contacts:
+            return 0
+        if self._backend:
+            return self._backend.insert_contacts_batch(contacts)
+
+        now = datetime.utcnow().isoformat()
+        records = []
+        for idx, contact in enumerate(contacts):
+            clean_email = contact.email.strip().lower() if contact.email else ""
+            if not clean_email or "@" not in clean_email:
+                identifier = f"{contact.linkedin_url}_{contact.first_name}_{contact.company}_{idx}".strip()
+                import hashlib
+                h = hashlib.sha256(identifier.encode()).hexdigest()[:12]
+                clean_email = f"li_{h}@linkedin-lead.local"
+
+            records.append((
+                contact.first_name.strip(),
+                contact.last_name.strip(),
+                contact.company.strip(),
+                contact.job_title.strip() if contact.job_title else "",
+                contact.linkedin_url.strip() if contact.linkedin_url else "",
+                clean_email,
+                contact.notes.strip() if contact.notes else "",
+                contact.website.strip() if contact.website else "",
+                contact.status.value,
+                now,
+                now,
+            ))
+
+        with self.get_connection() as conn:
+            conn.executemany(
+                """
+                INSERT INTO contacts 
+                (first_name, last_name, company, job_title, linkedin_url, email, notes, website, status, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(email) DO UPDATE SET
+                    first_name=excluded.first_name,
+                    last_name=excluded.last_name,
+                    company=excluded.company,
+                    job_title=excluded.job_title,
+                    linkedin_url=excluded.linkedin_url,
+                    notes=excluded.notes,
+                    website=excluded.website,
+                    updated_at=excluded.updated_at;
+                """,
+                records,
+            )
+        return len(records)
+
     def get_contact(self, contact_id: int) -> Optional[Contact]:
         if self._backend:
             return self._backend.get_contact(contact_id)
@@ -258,6 +309,34 @@ class Database:
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT * FROM contacts WHERE id = ?", (contact_id,))
+            row = cursor.fetchone()
+            if row:
+                return Contact(
+                    id=row["id"],
+                    first_name=row["first_name"],
+                    last_name=row["last_name"],
+                    company=row["company"],
+                    job_title=row["job_title"],
+                    linkedin_url=row["linkedin_url"],
+                    email=row["email"],
+                    notes=row["notes"],
+                    website=row["website"],
+                    status=safe_contact_status(row["status"]),
+                    created_at=row["created_at"],
+                    updated_at=row["updated_at"],
+                )
+        return None
+
+    def get_contact_by_email(self, email: str) -> Optional[Contact]:
+        if not email:
+            return None
+        if self._backend:
+            return self._backend.get_contact_by_email(email)
+
+        clean = email.strip().lower()
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM contacts WHERE LOWER(email) = ?", (clean,))
             row = cursor.fetchone()
             if row:
                 return Contact(
