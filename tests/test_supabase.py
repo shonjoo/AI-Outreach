@@ -223,6 +223,48 @@ class TestSupabaseIntegration(unittest.TestCase):
         self.assertEqual(retrieved.status, DraftStatus.PENDING)
         self.assertEqual(retrieved.source_facts, ["Fact A"])
 
+    def test_new_status_enums_compatibility(self):
+        """Verify HOT_LEAD, FOLLOW_UP_LATER, SENT, and FAILED enums are handled correctly."""
+        # 1. Contact with HOT_LEAD and FOLLOW_UP_LATER
+        update_mock = MagicMock()
+        update_mock.execute.return_value = MagicMock(data=[{"id": 7}])
+        table_mock = MagicMock()
+        table_mock.update.return_value.eq.return_value = update_mock
+        self.mock_client.table.return_value = table_mock
+
+        self.db.update_contact_status(7, ContactStatus.HOT_LEAD)
+        table_mock.update.assert_called_with({"status": "HOT_LEAD", "updated_at": unittest.mock.ANY})
+
+        self.db.update_contact_status(7, ContactStatus.FOLLOW_UP_LATER)
+        table_mock.update.assert_called_with({"status": "FOLLOW_UP_LATER", "updated_at": unittest.mock.ANY})
+
+        # 2. Draft with SENT and FAILED
+        self.db.update_draft_status(15, DraftStatus.SENT)
+        table_mock.update.assert_called_with({"status": "SENT", "updated_at": unittest.mock.ANY})
+
+        self.db.update_draft_status(15, DraftStatus.FAILED)
+        table_mock.update.assert_called_with({"status": "FAILED", "updated_at": unittest.mock.ANY})
+
+        # 3. Retrieve contacts with HOT_LEAD
+        select_mock = MagicMock()
+        select_mock.execute.return_value = MagicMock(
+            data=[
+                {
+                    "id": 7,
+                    "first_name": "Hot",
+                    "last_name": "Prospect",
+                    "company": "Growth Clinic",
+                    "email": "hot@clinic.com",
+                    "status": "HOT_LEAD",
+                    "created_at": "2026-10-04T12:00:00",
+                    "updated_at": "2026-10-04T12:00:00",
+                }
+            ]
+        )
+        table_mock.select.return_value.order.return_value = select_mock
+        contacts = self.db.list_contacts()
+        self.assertEqual(contacts[0].status, ContactStatus.HOT_LEAD)
+
     def test_suppression(self):
         """Verify suppression check, addition, and listing."""
         select_mock = MagicMock()

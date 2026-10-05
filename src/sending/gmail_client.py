@@ -130,3 +130,30 @@ class GmailClient:
             err = f"Failed to send email via Gmail API: {e}"
             logger.error(err)
             return False, None, None, err
+
+    def get_thread_messages(
+        self,
+        thread_id: str,
+        dry_run: bool = True,
+    ) -> Tuple[bool, list, Optional[str]]:
+        """
+        Retrieves messages in a thread from Gmail API.
+        Returns: (success: bool, messages: list, error_msg: Optional[str])
+        """
+        if dry_run or self.config.dry_run:
+            logger.info(f"[DRY-RUN] Simulated fetching thread {thread_id}")
+            return True, [], None
+
+        if not self.service:
+            err = "Gmail API service is not authenticated. Please run OAuth setup or enable dry-run mode."
+            logger.error(err)
+            return False, [], err
+
+        try:
+            thread = self.service.users().threads().get(userId="me", id=thread_id).execute()
+            messages = thread.get("messages", [])
+            return True, messages, None
+        except Exception as e:
+            err = f"Failed to fetch thread {thread_id} via Gmail API: {e}"
+            logger.error(err)
+            return False, [], err

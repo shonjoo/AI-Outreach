@@ -59,7 +59,7 @@ class DraftGenerator:
         if not wa_msg:
             clean_first = contact.first_name if contact.first_name and contact.first_name.lower() != "there" else ""
             greeting = f"Hey {clean_first}" if clean_first else "Hey there"
-            wa_msg = f"{greeting}! Loved seeing {contact.company} on Maps. Noticed you don't have an online booking link yet—I built a simple 1-click booking tool for local businesses. Mind if I share a 30-sec preview?"
+            wa_msg = f"{greeting}! Loved seeing {contact.company} on Maps. Saw that there is no online booking link yet—I built a simple 1-click booking tool for local businesses. Mind if I share a 30-sec preview?"
         # Ensure under 50 words
         wa_words = wa_msg.split()
         if len(wa_words) > 50:

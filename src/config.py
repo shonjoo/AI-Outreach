@@ -117,6 +117,7 @@ class AppConfig:
     db_path: str = "outreach.db"
     google_client_secret_file: str = "credentials.json"
     google_token_file: str = "token.json"
+    lead_alert_webhook_url: Optional[str] = None
 
     @property
     def db_backend(self) -> str:
@@ -200,6 +201,8 @@ def load_config(config_path: str = "config.yaml") -> AppConfig:
     dry_run_env = os.getenv("DRY_RUN", "True").strip().lower()
     dry_run = dry_run_env in ("true", "1", "yes", "t")
 
+    webhook_url = os.getenv("LEAD_ALERT_WEBHOOK_URL") or data.get("lead_alert_webhook_url")
+
     return AppConfig(
         sender=sender,
         outreach=outreach,
@@ -211,4 +214,5 @@ def load_config(config_path: str = "config.yaml") -> AppConfig:
         db_path=sqlite_path,
         google_client_secret_file=os.getenv("GOOGLE_CLIENT_SECRET_FILE", "credentials.json"),
         google_token_file=os.getenv("GOOGLE_TOKEN_FILE", "token.json"),
+        lead_alert_webhook_url=webhook_url.strip() if webhook_url else None,
     )

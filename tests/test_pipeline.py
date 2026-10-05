@@ -145,7 +145,31 @@ class TestOutreachPipeline(unittest.TestCase):
         draft = self.generator.generate_for_contact(contact, dossier)
         draft.id = self.db.get_draft(cid).id
 
-        # 1. First Send (Simulated Dry-Run)
+        # 1. Review gate safeguard: If draft was flagged, sender must reject it
+        if draft.status == DraftStatus.FLAGGED:
+            blocked_success, blocked_msg = self.sender.send_approved_email(contact, draft, force_dry_run=True, respect_delay=False)
+            self.assertFalse(blocked_success)
+            self.assertIn("FLAGGED", blocked_msg)
+
+        # Simulate human review and approval step
+        clean_body = (
+            f"Hi Elena,\n\n"
+            f"Looking at Apex Smile Dental Care, patients currently call to confirm appointments.\n\n"
+            f"I build simple online booking forms for clinics so patients can reserve slots directly.\n\n"
+            f"Open to seeing a 2-minute preview?"
+        )
+        self.db.update_draft_content(
+            draft_id=draft.id,
+            hook="Looking at appointment booking for Apex Smile Dental Care",
+            email_subject="Online booking for Apex Smile Dental Care",
+            email_body=clean_body,
+            linkedin_note="",
+            linkedin_message="",
+            status=DraftStatus.APPROVED,
+        )
+        draft = self.db.get_draft(cid)
+
+        # First Send (Simulated Dry-Run) with approved draft
         success, msg = self.sender.send_approved_email(contact, draft, force_dry_run=True, respect_delay=False)
         self.assertTrue(success)
         self.assertIn("[DRY-RUN SIMULATED]", msg)

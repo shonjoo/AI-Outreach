@@ -17,6 +17,8 @@ from src.research.dossier import DossierBuilder
 from src.sending.gmail_client import GmailClient
 from src.sending.sender import OutreachSender
 from src.sending.suppression import SuppressionManager
+from src.sending.worker import DispatchWorker
+from src.sending.reply_tracker import ReplyTracker
 
 logging.basicConfig(
     level=logging.INFO,
@@ -104,6 +106,62 @@ def cmd_send(args, config: AppConfig, db: Database):
         logger.info(msg)
 
 
+def cmd_dispatch(args, config: AppConfig, db: Database):
+    """Runs the controlled background dispatch queue worker."""
+    is_live = getattr(args, "live", False)
+    dry_run = False if is_live else (args.dry_run or config.dry_run)
+    mode_label = "LIVE SENDING" if not dry_run else "DRY-RUN (Simulated)"
+
+    min_delay = args.interval_min if args.interval_min is not None else float(config.limits.min_delay)
+    max_delay = args.interval_max if args.interval_max is not None else float(config.limits.max_delay)
+
+    logger.info(
+        f"Starting DispatchWorker in {mode_label} mode (delay: {min_delay}-{max_delay}s, poll: {args.poll_interval}s)..."
+    )
+
+    worker = DispatchWorker(
+        config=config,
+        db=db,
+        poll_interval=args.poll_interval,
+        min_delay=min_delay,
+        max_delay=max_delay,
+        force_dry_run=dry_run,
+    )
+
+    import signal
+
+    def _handle_signal(sig, frame):
+        logger.info(f"Received signal {sig}. Initiating graceful shutdown...")
+        worker.stop()
+
+    signal.signal(signal.SIGINT, _handle_signal)
+    signal.signal(signal.SIGTERM, _handle_signal)
+
+    worker.run(max_dispatches=args.max_dispatches)
+
+
+def cmd_check_replies(args, config: AppConfig, db: Database):
+    """Polls email threads for prospect replies, classifies intent, and alerts."""
+    is_live = getattr(args, "live", False)
+    dry_run = False if is_live else (args.dry_run or config.dry_run)
+    mode_label = "LIVE" if not dry_run else "DRY-RUN (Simulated)"
+
+    logger.info(f"Checking for thread replies in {mode_label} mode...")
+    tracker = ReplyTracker(config=config, db=db)
+    results = tracker.poll_replies(force_dry_run=dry_run)
+
+    print("\n" + "=" * 55)
+    print(" 📬 PROSPECT REPLY MONITORING SUMMARY")
+    print("=" * 55)
+    if not results:
+        print(" No new replies detected in active outreach threads.")
+    else:
+        for r in results:
+            print(f" • {r['email']:<28} | Intent: {r['intent']:<14} | Status: {r['new_status']}")
+            print(f"   Summary: {r['summary']}")
+    print("=" * 55 + "\n")
+
+
 def cmd_stats(args, config: AppConfig, db: Database):
     contacts = db.list_contacts()
     today_count = db.get_today_sent_count()
@@ -159,6 +217,20 @@ def main():
     p_send = subparsers.add_parser("send", help="Send approved drafts")
     p_send.add_argument("--dry-run", action="store_true", default=False, help="Force dry-run mode")
 
+    # Dispatch Worker
+    p_dispatch = subparsers.add_parser("dispatch", help="Run background dispatch queue worker")
+    p_dispatch.add_argument("--dry-run", action="store_true", default=False, help="Force dry-run simulation mode")
+    p_dispatch.add_argument("--live", action="store_true", default=False, help="Enable live sending mode")
+    p_dispatch.add_argument("--interval-min", type=float, default=None, help="Minimum delay between sends in seconds")
+    p_dispatch.add_argument("--interval-max", type=float, default=None, help="Maximum delay between sends in seconds")
+    p_dispatch.add_argument("--poll-interval", type=float, default=5.0, help="Queue polling interval in seconds")
+    p_dispatch.add_argument("--max-dispatches", type=int, default=None, help="Stop after N dispatches")
+
+    # Check Replies
+    p_replies = subparsers.add_parser("check-replies", help="Check active threads for prospect replies")
+    p_replies.add_argument("--dry-run", action="store_true", default=False, help="Force dry-run simulation mode")
+    p_replies.add_argument("--live", action="store_true", default=False, help="Enable live checking mode")
+
     # Stats
     subparsers.add_parser("stats", help="Show pipeline statistics")
 
@@ -179,6 +251,10 @@ def main():
         cmd_pipeline(args, config, db)
     elif args.command == "send":
         cmd_send(args, config, db)
+    elif args.command == "dispatch":
+        cmd_dispatch(args, config, db)
+    elif args.command == "check-replies":
+        cmd_check_replies(args, config, db)
     elif args.command == "stats":
         cmd_stats(args, config, db)
     elif args.command == "auth":

@@ -319,6 +319,37 @@ class SupabaseDatabase:
             drafts[d.contact_id] = d
         return drafts
 
+    def list_drafts(self, status: Optional[DraftStatus] = None) -> List[Draft]:
+        """Returns all drafts matching status, ordered by id ASC."""
+        query = self.client.table("drafts").select("*")
+        if status:
+            query = query.eq("status", status.value)
+        res = query.order("id").execute()
+        drafts = []
+        for row in (res.data or []):
+            drafts.append(
+                Draft(
+                    id=row["id"],
+                    contact_id=row["contact_id"],
+                    hook=row["hook"],
+                    linkedin_note=row.get("linkedin_note", ""),
+                    linkedin_message=row.get("linkedin_message", ""),
+                    whatsapp_message=row.get("whatsapp_message", "") or "",
+                    email_subject=row["email_subject"],
+                    email_subject_alt1=row.get("email_subject_alt1", ""),
+                    email_subject_alt2=row.get("email_subject_alt2", ""),
+                    email_body=row["email_body"],
+                    followup_subject=row.get("followup_subject", ""),
+                    followup_body=row.get("followup_body", ""),
+                    source_facts=_parse_json_field(row.get("source_facts")),
+                    status=DraftStatus(row["status"]),
+                    version=row.get("version", 1),
+                    created_at=str(row["created_at"]),
+                    updated_at=str(row["updated_at"]),
+                )
+            )
+        return drafts
+
     def list_all_dossiers(self) -> Dict[int, ResearchDossier]:
         """Returns all dossiers mapped by contact_id in a single PostgREST query."""
         res = self.client.table("research_dossiers").select("*").execute()

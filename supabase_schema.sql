@@ -23,6 +23,13 @@ CREATE TABLE IF NOT EXISTS public.contacts (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
 );
 
+-- Supported contact statuses:
+-- 'PENDING_RESEARCH', 'READY_FOR_REVIEW', 'NEEDS_MANUAL_REVIEW', 'APPROVED',
+-- 'EMAIL_SENT', 'LINKEDIN_SENT', 'WHATSAPP_SENT', 'OPTED_OUT', 'REPLIED',
+-- 'HOT_LEAD', 'FOLLOW_UP_LATER', 'SKIPPED'
+ALTER TABLE public.contacts ADD COLUMN IF NOT EXISTS lead_alert_sent BOOLEAN DEFAULT FALSE;
+ALTER TABLE public.contacts ADD COLUMN IF NOT EXISTS reply_sentiment TEXT;
+
 CREATE INDEX IF NOT EXISTS idx_contacts_email ON public.contacts (email);
 CREATE INDEX IF NOT EXISTS idx_contacts_status ON public.contacts (status);
 CREATE INDEX IF NOT EXISTS idx_contacts_created_at ON public.contacts (created_at DESC);
@@ -66,6 +73,8 @@ CREATE TABLE IF NOT EXISTS public.drafts (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
 );
 
+-- Supported draft statuses:
+-- 'PENDING', 'APPROVED', 'EDITED', 'REJECTED', 'FLAGGED', 'SENT', 'FAILED'
 ALTER TABLE public.drafts ADD COLUMN IF NOT EXISTS whatsapp_message TEXT;
 
 CREATE INDEX IF NOT EXISTS idx_drafts_contact_id ON public.drafts (contact_id);
@@ -85,6 +94,8 @@ CREATE TABLE IF NOT EXISTS public.send_logs (
     status TEXT NOT NULL,
     error_message TEXT
 );
+
+ALTER TABLE public.send_logs ADD COLUMN IF NOT EXISTS reply_sentiment TEXT;
 
 CREATE INDEX IF NOT EXISTS idx_send_logs_recipient ON public.send_logs (recipient);
 CREATE INDEX IF NOT EXISTS idx_send_logs_sent_at ON public.send_logs (sent_at DESC);

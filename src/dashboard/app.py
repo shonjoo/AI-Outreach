@@ -20,6 +20,7 @@ from src.generation.llm_client import GeminiQuotaError
 from src.research.dossier import DossierBuilder
 from src.sending.sender import OutreachSender
 from src.sending.suppression import SuppressionManager
+from src.sending.worker import DispatchWorker
 from src.db.csv_importer import import_contacts_to_db, parse_any_lead_file
 
 
@@ -710,6 +711,32 @@ with st.sidebar:
     """, unsafe_allow_html=True)
     st.progress(pct)
 
+    # Background Dispatch Queue Worker Card
+    st.markdown("""
+    <div class="shadcn-card-title" style="margin: 1rem 0 0.4rem 0;">Dispatch Queue Worker</div>
+    """, unsafe_allow_html=True)
+
+    worker_instance = st.session_state.get("dispatch_worker")
+    is_worker_active = worker_instance is not None and worker_instance.is_running()
+
+    if is_worker_active:
+        st.markdown(shadcn_badge("Worker Running (Paced)", "success"), unsafe_allow_html=True)
+        if st.button("Stop Dispatch Worker", key="btn_stop_worker", use_container_width=True):
+            worker_instance.stop()
+            st.session_state["dispatch_worker"] = None
+            st.rerun()
+    else:
+        st.caption("Background service auto-dispatches approved drafts with randomized jitter (90-240s).")
+        if st.button("Start Dispatch Worker", key="btn_start_worker", use_container_width=True):
+            new_worker = DispatchWorker(
+                config=config,
+                db=db,
+                force_dry_run=dry_run_active,
+            )
+            new_worker.start()
+            st.session_state["dispatch_worker"] = new_worker
+            st.rerun()
+
     st.markdown("""
     <div class="shadcn-card-title" style="margin: 1.25rem 0 0.4rem 0;">Import Leads</div>
     """, unsafe_allow_html=True)
@@ -815,8 +842,14 @@ total_count = len(all_contacts)
 approved_count = sum(1 for c in all_contacts if c.status == ContactStatus.APPROVED)
 needs_review_count = sum(1 for c in all_contacts if c.status in (ContactStatus.READY_FOR_REVIEW, ContactStatus.NEEDS_MANUAL_REVIEW))
 flagged_count = sum(1 for c in all_contacts if (d := all_drafts_map.get(c.id)) and d.status == DraftStatus.FLAGGED)
+hot_leads_count = sum(1 for c in all_contacts if c.status == ContactStatus.HOT_LEAD)
+replied_count = sum(1 for c in all_contacts if c.status in (ContactStatus.REPLIED, ContactStatus.HOT_LEAD))
+follow_up_later_count = sum(1 for c in all_contacts if c.status == ContactStatus.FOLLOW_UP_LATER)
+suppressed_all = db.list_suppressed()
+suppression_count = len(suppressed_all)
 sent_today = db.get_today_sent_count()
 limit_today = config.limits.emails_per_day
+webhook_configured = bool(config.lead_alert_webhook_url)
 
 
 # ShadCN Header
@@ -834,14 +867,15 @@ with col_h2:
         db_badge_top = shadcn_badge("Cloud Synced", "cloud")
     else:
         db_badge_top = shadcn_badge("Local Mode", "secondary")
-    st.markdown(f'<div style="text-align: right; padding-top: 0.5rem;">{db_badge_top}</div>', unsafe_allow_html=True)
+    webhook_badge_top = shadcn_badge("Webhook Connected", "success") if webhook_configured else shadcn_badge("Webhook Offline", "secondary")
+    st.markdown(f'<div style="text-align: right; padding-top: 0.5rem; display: flex; justify-content: flex-end; gap: 6px;">{db_badge_top}{webhook_badge_top}</div>', unsafe_allow_html=True)
 
 # ShadCN KPI Stat Cards
-kpi1, kpi2, kpi3, kpi4 = st.columns(4)
+kpi1, kpi2, kpi3, kpi4, kpi5 = st.columns(5)
 with kpi1:
     st.markdown(f"""
     <div class="shadcn-card">
-        <div class="shadcn-card-title">Total Prospects</div>
+        <div class="shadcn-card-title">Total Contacts</div>
         <div class="shadcn-card-value">{total_count}</div>
         <div class="shadcn-card-desc">Active in pipeline</div>
     </div>
@@ -849,35 +883,189 @@ with kpi1:
 with kpi2:
     st.markdown(f"""
     <div class="shadcn-card">
-        <div class="shadcn-card-title">Awaiting Review</div>
-        <div class="shadcn-card-value">{needs_review_count}</div>
-        <div class="shadcn-card-desc">Drafts ready for signoff</div>
+        <div class="shadcn-card-title">Approved in Queue</div>
+        <div class="shadcn-card-value" style="color: #84cc16;">{approved_count}</div>
+        <div class="shadcn-card-desc">Ready for dispatch</div>
     </div>
     """, unsafe_allow_html=True)
 with kpi3:
-    flagged_color = "#fbbf24" if flagged_count > 0 else "#fafafa"
-    st.markdown(f"""
-    <div class="shadcn-card">
-        <div class="shadcn-card-title">Flagged Slop</div>
-        <div class="shadcn-card-value" style="color: {flagged_color};">{flagged_count}</div>
-        <div class="shadcn-card-desc">Failed safety checks</div>
-    </div>
-    """, unsafe_allow_html=True)
-with kpi4:
     st.markdown(f"""
     <div class="shadcn-card">
         <div class="shadcn-card-title">Dispatched Today</div>
         <div class="shadcn-card-value">{sent_today} <span style="font-size: 0.875rem; color: #71717a; font-weight: 400;">/ {limit_today}</span></div>
-        <div class="shadcn-card-desc">Daily quota limit</div>
+        <div class="shadcn-card-desc">Daily cap threshold</div>
+    </div>
+    """, unsafe_allow_html=True)
+with kpi4:
+    hot_color = "#84cc16" if hot_leads_count > 0 else "#fafafa"
+    st.markdown(f"""
+    <div class="shadcn-card">
+        <div class="shadcn-card-title">Hot Leads & Replied</div>
+        <div class="shadcn-card-value" style="color: {hot_color};">{hot_leads_count} <span style="font-size: 0.875rem; color: #71717a; font-weight: 400;">({replied_count} total)</span></div>
+        <div class="shadcn-card-desc">Interested replies</div>
+    </div>
+    """, unsafe_allow_html=True)
+with kpi5:
+    st.markdown(f"""
+    <div class="shadcn-card">
+        <div class="shadcn-card-title">Suppressions</div>
+        <div class="shadcn-card-value" style="color: #ef4444;">{suppression_count}</div>
+        <div class="shadcn-card-desc">Opt-outs protected</div>
     </div>
     """, unsafe_allow_html=True)
 
 st.markdown("<div style='height: 14px;'></div>", unsafe_allow_html=True)
 
-# Navigation Tabs: Dossier and Drafts, Sent log, Follow-ups, Suppressed
-tab_drafts, tab_sent, tab_followups, tab_suppression = st.tabs(
-    ["Drafts", "Sent Log", "Follow-ups", "Suppression List"]
+# Navigation Tabs: Analytics, Drafts, Sent log, Follow-ups, Suppressed
+tab_analytics, tab_drafts, tab_sent, tab_followups, tab_suppression = st.tabs(
+    ["Analytics", "Drafts", "Sent Log", "Follow-ups", "Suppression List"]
 )
+
+# ----------------- TAB 0: CAMPAIGN ANALYTICS -----------------
+with tab_analytics:
+    st.markdown("""
+    <div style="margin-bottom: 1.25rem;">
+        <h2 style="font-size: 1.25rem; font-weight: 600; color: #fafafa; margin: 0;">Campaign Conversion & Reply Intelligence</h2>
+        <p style="font-size: 0.825rem; color: #a1a1aa; margin: 0.2rem 0 0 0;">Real-time conversion metrics, reply intent distribution, deliverability safeguards, and webhook indicators.</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    all_logs = db.list_send_logs(limit=100)
+    total_dispatched_all_time = len(all_logs)
+    live_dispatched = sum(1 for l in all_logs if not l.is_dry_run and l.status == "SENT")
+    simulated_dispatched = sum(1 for l in all_logs if l.is_dry_run and l.status in ("SENT", "SIMULATED"))
+    total_sent_effective = live_dispatched + simulated_dispatched
+
+    # Conversion Rates
+    # Open rate benchmark: Gmail API does not inject pixel trackers by default to safeguard deliverability (100% spam-free plain-text reputation)
+    reply_rate_pct = (replied_count / max(total_sent_effective, 1) * 100) if total_sent_effective > 0 else 0.0
+    hot_lead_rate_pct = (hot_leads_count / max(total_sent_effective, 1) * 100) if total_sent_effective > 0 else 0.0
+
+    # Analytics Cards Row
+    a_col1, a_col2, a_col3, a_col4 = st.columns(4)
+    with a_col1:
+        st.markdown(f"""
+        <div class="shadcn-card">
+            <div class="shadcn-card-title">Total Dispatched</div>
+            <div class="shadcn-card-value">{total_dispatched_all_time}</div>
+            <div class="shadcn-card-desc">{live_dispatched} Live • {simulated_dispatched} Dry-run</div>
+        </div>
+        """, unsafe_allow_html=True)
+    with a_col2:
+        st.markdown(f"""
+        <div class="shadcn-card">
+            <div class="shadcn-card-title">Reply Conversion Rate</div>
+            <div class="shadcn-card-value" style="color: #84cc16;">{reply_rate_pct:.1f}%</div>
+            <div class="shadcn-card-desc">{replied_count} replies / {total_sent_effective} sent</div>
+        </div>
+        """, unsafe_allow_html=True)
+    with a_col3:
+        st.markdown(f"""
+        <div class="shadcn-card">
+            <div class="shadcn-card-title">Hot Lead Conversion</div>
+            <div class="shadcn-card-value" style="color: #a3e635;">{hot_lead_rate_pct:.1f}%</div>
+            <div class="shadcn-card-desc">{hot_leads_count} high-intent prospects</div>
+        </div>
+        """, unsafe_allow_html=True)
+    with a_col4:
+        st.markdown(f"""
+        <div class="shadcn-card">
+            <div class="shadcn-card-title">Opt-Out Protection</div>
+            <div class="shadcn-card-value" style="color: #94a3b8;">{suppression_count}</div>
+            <div class="shadcn-card-desc">Suppressed from future touchpoints</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    st.markdown("<div style='height: 12px;'></div>", unsafe_allow_html=True)
+
+    # Reply Intent Breakdown & Webhook Health
+    row2_left, row2_right = st.columns([3, 2])
+    with row2_left:
+        st.markdown("""
+        <div style="font-size: 0.95rem; font-weight: 600; color: #fafafa; margin-bottom: 0.6rem;">
+            Prospect Reply Intent Breakdown
+        </div>
+        """, unsafe_allow_html=True)
+
+        # Sentiment breakdown calculation
+        # Contacts with status HOT_LEAD => INTERESTED
+        # Contacts with status FOLLOW_UP_LATER => NOT_NOW
+        # Contacts with status OPTED_OUT => UNSUBSCRIBE
+        # Contacts with status REPLIED => PRICE_QUESTION or general
+        count_interested = sum(1 for c in all_contacts if c.status == ContactStatus.HOT_LEAD)
+        count_not_now = sum(1 for c in all_contacts if c.status == ContactStatus.FOLLOW_UP_LATER)
+        count_unsubscribe = sum(1 for c in all_contacts if c.status == ContactStatus.OPTED_OUT)
+        count_price_or_general = sum(1 for c in all_contacts if c.status == ContactStatus.REPLIED)
+
+        intent_data = [
+            {"Intent Category": "INTERESTED (Hot Lead)", "Count": count_interested, "Target Action": "Schedule demo / Send proposal link"},
+            {"Intent Category": "PRICE_QUESTION", "Count": count_price_or_general, "Target Action": "Send pricing breakdown & ROI"},
+            {"Intent Category": "NOT_NOW", "Count": count_not_now, "Target Action": "Scheduled automated follow-up"},
+            {"Intent Category": "UNSUBSCRIBE", "Count": count_unsubscribe, "Target Action": "Auto-suppressed from campaigns"},
+        ]
+        st.dataframe(intent_data, use_container_width=True)
+
+    with row2_right:
+        st.markdown("""
+        <div style="font-size: 0.95rem; font-weight: 600; color: #fafafa; margin-bottom: 0.6rem;">
+            Integration & Webhook Status
+        </div>
+        """, unsafe_allow_html=True)
+
+        if config.lead_alert_webhook_url:
+            masked_url = config.lead_alert_webhook_url[:24] + "..." if len(config.lead_alert_webhook_url) > 24 else config.lead_alert_webhook_url
+            wh_html = f"""
+            <div class="shadcn-card" style="padding: 1rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div style="font-size: 0.85rem; font-weight: 600; color: #fafafa;">Lead Alert Webhook</div>
+                    <div>{shadcn_badge("CONNECTED", "success")}</div>
+                </div>
+                <div style="font-size: 0.75rem; color: #a1a1aa; margin-top: 6px; font-family: 'JetBrains Mono', monospace;">{masked_url}</div>
+                <div style="font-size: 0.72rem; color: #84cc16; margin-top: 4px;">✓ Instant alerts active on INTERESTED and PRICE_QUESTION replies.</div>
+            </div>
+            """
+        else:
+            wh_html = f"""
+            <div class="shadcn-card" style="padding: 1rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div style="font-size: 0.85rem; font-weight: 600; color: #fafafa;">Lead Alert Webhook</div>
+                    <div>{shadcn_badge("NOT CONFIGURED", "secondary")}</div>
+                </div>
+                <div style="font-size: 0.75rem; color: #71717a; margin-top: 6px;">Set <code>LEAD_ALERT_WEBHOOK_URL</code> in <code>.env</code> or <code>config.yaml</code> to receive instant notifications for hot leads.</div>
+            </div>
+            """
+        st.markdown(wh_html, unsafe_allow_html=True)
+
+    st.markdown("<div style='height: 12px;'></div>", unsafe_allow_html=True)
+
+    # Activity Log
+    st.markdown("""
+    <div style="font-size: 0.95rem; font-weight: 600; color: #fafafa; margin-bottom: 0.6rem;">
+        Recent Activity & Dispatch Stream
+    </div>
+    """, unsafe_allow_html=True)
+
+    if not all_logs:
+        st.info("No dispatch activity recorded yet. Run tests, generate drafts, or launch the background worker.")
+    else:
+        # Build activity table with contact context if available
+        contact_id_map = {c.id: c for c in all_contacts}
+        activity_rows = []
+        for l in all_logs[:25]:
+            contact_obj = contact_id_map.get(l.contact_id)
+            classification = contact_obj.status.value if contact_obj else "SENT"
+            activity_rows.append({
+                "Timestamp": l.sent_at[:19] if l.sent_at else "-",
+                "Recipient": l.recipient,
+                "Company": contact_obj.company if contact_obj else "-",
+                "Channel": l.channel.upper(),
+                "Mode": "Dry-run" if l.is_dry_run else "Live",
+                "Dispatch Status": l.status,
+                "Reply Classification": classification,
+                "Error": l.error_message or "None",
+            })
+        st.dataframe(activity_rows, use_container_width=True)
+
 
 # ----------------- TAB 1: DRAFTS -----------------
 with tab_drafts:

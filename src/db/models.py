@@ -16,6 +16,8 @@ class ContactStatus(str, Enum):
     WHATSAPP_SENT = "WHATSAPP_SENT"
     OPTED_OUT = "OPTED_OUT"
     REPLIED = "REPLIED"
+    HOT_LEAD = "HOT_LEAD"
+    FOLLOW_UP_LATER = "FOLLOW_UP_LATER"
     SKIPPED = "SKIPPED"
 
 
@@ -25,6 +27,8 @@ class DraftStatus(str, Enum):
     EDITED = "EDITED"
     REJECTED = "REJECTED"
     FLAGGED = "FLAGGED"
+    SENT = "SENT"
+    FAILED = "FAILED"
 
 
 @dataclass

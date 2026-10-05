@@ -25,7 +25,9 @@ STRICT OPERATIONAL RULES:
 3. Grounding & Truthfulness:
    - Use ONLY facts present in the VERIFIED FACTS list (ratings, area, website status, review sentiment).
    - NEVER invent fake metrics, customer counts, case studies, or claims.
-4. Banned Corporate Openers (DO NOT start with stiff corporate clichés):
+4. Banned Corporate Openers:
+   - CRITICAL RULE: Never start the message with 'I noticed that', 'I came across', 'I am reaching out', or 'I hope this finds you well'.
+   - Open directly with context (e.g., "Looking at your Google Maps profile...", "Your website currently routes appointments...", "Checking the current booking workflow on [Business Name]...", "Saw that [Business Name]...").
    - "I hope this finds you well" (or "Hope this finds you well")
    - "I am reaching out to discuss synergy"
    - "My name is X and I am an enterprise solution provider"
@@ -88,6 +90,8 @@ Generate the outreach package.
 Remember:
 - email_body must be strictly under 90 words.
 - One specific observation from verified facts, one concrete offer, one low-friction ask.
+- CRITICAL RULE: Never start the message with 'I noticed that', 'I came across', 'I am reaching out', or 'I hope this finds you well'.
+- Open directly with context (e.g., "Looking at your Google Maps profile...", "Your website currently routes appointments...", "Checking the current booking workflow on {contact.company}...").
 - Zero banned openers, zero buzzwords, zero em-dashes, zero exclamation marks, zero triplet lists.
 - If verified facts are insufficient, set needs_manual_review to true.
 """

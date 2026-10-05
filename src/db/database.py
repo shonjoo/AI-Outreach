@@ -507,6 +507,44 @@ class Database:
                 drafts[d.contact_id] = d
             return drafts
 
+    def list_drafts(self, status: Optional[DraftStatus] = None) -> List[Draft]:
+        """Returns a list of drafts, optionally filtered by status, ordered by id ASC."""
+        if self._backend and hasattr(self._backend, "list_drafts"):
+            return self._backend.list_drafts(status)
+
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            if status:
+                cursor.execute("SELECT * FROM drafts WHERE status = ? ORDER BY id ASC", (status.value,))
+            else:
+                cursor.execute("SELECT * FROM drafts ORDER BY id ASC")
+            rows = cursor.fetchall()
+            drafts = []
+            for row in rows:
+                wa_msg = row["whatsapp_message"] if "whatsapp_message" in row.keys() else ""
+                drafts.append(
+                    Draft(
+                        id=row["id"],
+                        contact_id=row["contact_id"],
+                        hook=row["hook"],
+                        linkedin_note=row["linkedin_note"] or "",
+                        linkedin_message=row["linkedin_message"] or "",
+                        whatsapp_message=wa_msg or "",
+                        email_subject=row["email_subject"] or "",
+                        email_subject_alt1=row["email_subject_alt1"] or "",
+                        email_subject_alt2=row["email_subject_alt2"] or "",
+                        email_body=row["email_body"] or "",
+                        followup_subject=row["followup_subject"] or "",
+                        followup_body=row["followup_body"] or "",
+                        source_facts=json.loads(row["source_facts"] or "[]"),
+                        status=DraftStatus(row["status"]),
+                        version=row["version"],
+                        created_at=row["created_at"],
+                        updated_at=row["updated_at"],
+                    )
+                )
+            return drafts
+
     def list_all_dossiers(self) -> Dict[int, ResearchDossier]:
         """Returns a mapping of contact_id -> ResearchDossier in a single batch query."""
         if self._backend and hasattr(self._backend, "list_all_dossiers"):
