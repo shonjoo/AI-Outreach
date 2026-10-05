@@ -21,6 +21,16 @@ from src.db.models import (
 logger = logging.getLogger(__name__)
 
 
+def safe_contact_status(val: Any) -> ContactStatus:
+    """Safely converts string or enum to ContactStatus with fallback."""
+    if isinstance(val, ContactStatus):
+        return val
+    try:
+        return ContactStatus(str(val))
+    except (ValueError, KeyError, AttributeError):
+        return ContactStatus.PENDING_RESEARCH
+
+
 class Database:
     """
     Unified database repository.
@@ -260,7 +270,7 @@ class Database:
                     email=row["email"],
                     notes=row["notes"],
                     website=row["website"],
-                    status=ContactStatus(row["status"]),
+                    status=safe_contact_status(row["status"]),
                     created_at=row["created_at"],
                     updated_at=row["updated_at"],
                 )
@@ -288,7 +298,7 @@ class Database:
                     email=row["email"],
                     notes=row["notes"],
                     website=row["website"],
-                    status=ContactStatus(row["status"]),
+                    status=safe_contact_status(row["status"]),
                     created_at=row["created_at"],
                     updated_at=row["updated_at"],
                 )

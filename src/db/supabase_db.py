@@ -34,6 +34,16 @@ def _parse_json_field(val: Any) -> list:
     return []
 
 
+def safe_contact_status(val: Any) -> ContactStatus:
+    """Safely converts string or enum to ContactStatus with fallback."""
+    if isinstance(val, ContactStatus):
+        return val
+    try:
+        return ContactStatus(str(val))
+    except (ValueError, KeyError, AttributeError):
+        return ContactStatus.PENDING_RESEARCH
+
+
 class SupabaseDatabase:
     """Supabase cloud database repository."""
 
@@ -104,7 +114,7 @@ class SupabaseDatabase:
             email=row["email"],
             notes=row.get("notes", ""),
             website=row.get("website", ""),
-            status=ContactStatus(row["status"]),
+            status=safe_contact_status(row.get("status")),
             created_at=str(row["created_at"]),
             updated_at=str(row["updated_at"]),
         )
@@ -127,7 +137,7 @@ class SupabaseDatabase:
                     email=row["email"],
                     notes=row.get("notes", ""),
                     website=row.get("website", ""),
-                    status=ContactStatus(row["status"]),
+                    status=safe_contact_status(row.get("status")),
                     created_at=str(row["created_at"]),
                     updated_at=str(row["updated_at"]),
                 )

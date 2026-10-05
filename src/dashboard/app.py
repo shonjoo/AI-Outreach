@@ -719,6 +719,12 @@ def shadcn_avatar(initials: str, accent: bool = False) -> str:
     return f'<div class="shadcn-avatar{accent_cls}">{initials[:2].upper()}</div>'
 
 
+def get_contact_status_str(contact: Contact) -> str:
+    """Safely extracts string representation of contact status."""
+    st_val = getattr(contact, "status", "")
+    return getattr(st_val, "value", str(st_val))
+
+
 config = load_config()
 db = Database(config.db_path, config=config)
 dossier_builder = DossierBuilder()
@@ -966,12 +972,12 @@ all_drafts_map = db.list_all_drafts()
 all_dossiers_map = db.list_all_dossiers()
 
 total_count = len(all_contacts)
-approved_count = sum(1 for c in all_contacts if c.status == ContactStatus.APPROVED)
-needs_review_count = sum(1 for c in all_contacts if c.status in (ContactStatus.READY_FOR_REVIEW, ContactStatus.NEEDS_MANUAL_REVIEW))
-flagged_count = sum(1 for c in all_contacts if (d := all_drafts_map.get(c.id)) and d.status == DraftStatus.FLAGGED)
-hot_leads_count = sum(1 for c in all_contacts if c.status == ContactStatus.HOT_LEAD)
-replied_count = sum(1 for c in all_contacts if c.status in (ContactStatus.REPLIED, ContactStatus.HOT_LEAD))
-follow_up_later_count = sum(1 for c in all_contacts if c.status == ContactStatus.FOLLOW_UP_LATER)
+approved_count = sum(1 for c in all_contacts if get_contact_status_str(c) == "APPROVED")
+needs_review_count = sum(1 for c in all_contacts if get_contact_status_str(c) in ("READY_FOR_REVIEW", "NEEDS_MANUAL_REVIEW"))
+flagged_count = sum(1 for c in all_contacts if (d := all_drafts_map.get(c.id)) and getattr(d, "status", None) == DraftStatus.FLAGGED)
+hot_leads_count = sum(1 for c in all_contacts if get_contact_status_str(c) == "HOT_LEAD")
+replied_count = sum(1 for c in all_contacts if get_contact_status_str(c) in ("REPLIED", "HOT_LEAD"))
+follow_up_later_count = sum(1 for c in all_contacts if get_contact_status_str(c) == "FOLLOW_UP_LATER")
 suppressed_all = db.list_suppressed()
 suppression_count = len(suppressed_all)
 sent_today = db.get_today_sent_count()
@@ -1119,10 +1125,10 @@ with tab_analytics:
         # Contacts with status FOLLOW_UP_LATER => NOT_NOW
         # Contacts with status OPTED_OUT => UNSUBSCRIBE
         # Contacts with status REPLIED => PRICE_QUESTION or general
-        count_interested = sum(1 for c in all_contacts if c.status == ContactStatus.HOT_LEAD)
-        count_not_now = sum(1 for c in all_contacts if c.status == ContactStatus.FOLLOW_UP_LATER)
-        count_unsubscribe = sum(1 for c in all_contacts if c.status == ContactStatus.OPTED_OUT)
-        count_price_or_general = sum(1 for c in all_contacts if c.status == ContactStatus.REPLIED)
+        count_interested = sum(1 for c in all_contacts if get_contact_status_str(c) == "HOT_LEAD")
+        count_not_now = sum(1 for c in all_contacts if get_contact_status_str(c) == "FOLLOW_UP_LATER")
+        count_unsubscribe = sum(1 for c in all_contacts if get_contact_status_str(c) == "OPTED_OUT")
+        count_price_or_general = sum(1 for c in all_contacts if get_contact_status_str(c) == "REPLIED")
 
         intent_data = [
             {"Intent Category": "INTERESTED (Hot Lead)", "Count": count_interested, "Target Action": "Schedule demo / Send proposal link"},
@@ -1243,15 +1249,16 @@ with tab_drafts:
     filtered_contacts = []
     for c in all_contacts:
         c_draft = all_drafts_map.get(c.id)
+        c_st_str = get_contact_status_str(c)
         if status_filter == "Pending actions":
-            if c.status in (ContactStatus.READY_FOR_REVIEW, ContactStatus.NEEDS_MANUAL_REVIEW, ContactStatus.PENDING_RESEARCH):
+            if c_st_str in ("READY_FOR_REVIEW", "NEEDS_MANUAL_REVIEW", "PENDING_RESEARCH"):
                 filtered_contacts.append(c)
         elif status_filter == "FLAGGED":
-            if c_draft and c_draft.status == DraftStatus.FLAGGED:
+            if c_draft and getattr(c_draft, "status", None) == DraftStatus.FLAGGED:
                 filtered_contacts.append(c)
         elif status_filter == "ALL":
             filtered_contacts.append(c)
-        elif c.status.value == status_filter:
+        elif c_st_str == status_filter:
             filtered_contacts.append(c)
 
     if not filtered_contacts:
@@ -1262,17 +1269,17 @@ with tab_drafts:
         for contact in filtered_contacts:
             dossier = all_dossiers_map.get(contact.id)
             draft = all_drafts_map.get(contact.id)
-            is_flagged = bool(draft and draft.status == DraftStatus.FLAGGED)
+            is_flagged = bool(draft and getattr(draft, "status", None) == DraftStatus.FLAGGED)
             flagged_tag = " • [FLAGGED]" if is_flagged else ""
-
+            contact_status_str = get_contact_status_str(contact)
 
             # ShadCN Prospect Card Preview Banner
-            status_badge_html = shadcn_status_badge(contact.status.value)
+            status_badge_html = shadcn_status_badge(contact_status_str)
             flag_badge_html = f" {shadcn_badge('FLAGGED', 'destructive')}" if is_flagged else ""
             initials = "".join([part[0] for part in contact.full_name.split() if part]) or "P"
-            avatar_html = shadcn_avatar(initials, accent=(contact.status == ContactStatus.HOT_LEAD))
+            avatar_html = shadcn_avatar(initials, accent=(contact_status_str == "HOT_LEAD"))
             title_text = contact.job_title or "Owner / Founder"
-            expander_label = f"{contact.full_name} — {title_text}, {contact.company} [{contact.status.value}]{flagged_tag}"
+            expander_label = f"{contact.full_name} — {title_text}, {contact.company} [{contact_status_str}]{flagged_tag}"
 
             st.markdown(f"""
             <div style="background-color: #0c0d0e; border: 1px solid var(--figma-border); border-radius: var(--figma-radius-md) var(--figma-radius-md) 0 0; padding: 0.75rem 1rem; display: flex; align-items: center; justify-content: space-between; margin-bottom: -1px;">
