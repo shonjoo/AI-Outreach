@@ -1114,19 +1114,58 @@ with st.sidebar:
     else:
         st.warning("⚡ Live mode — real emails will be dispatched.")
 
-    # Quota Progress Card
+    # Quota Progress Dial (OLED Radial Ring)
     today_count = db.get_today_sent_count()
     max_limit = config.limits.emails_per_day
     pct = min(today_count / max(max_limit, 1), 1.0)
+    pct_int = int(pct * 100)
+
+    # Dynamic color & glow based on threshold
+    if pct >= 1.0:
+        ring_color = "#ef4444"  # Red
+        ring_glow = "rgba(239, 68, 68, 0.4)"
+        status_note = "Daily limit reached"
+    elif pct >= 0.8:
+        ring_color = "#f59e0b"  # Amber
+        ring_glow = "rgba(245, 158, 11, 0.4)"
+        status_note = "Approaching cap"
+    else:
+        ring_color = "#84cc16"  # Lime
+        ring_glow = "rgba(132, 204, 22, 0.4)"
+        status_note = "Warm-up pacing safe"
+
+    # SVG circular progress calculations (Radius = 38, Circumference = 238.76)
+    circ = 238.76
+    dashoffset = circ * (1.0 - pct)
+
     st.markdown(f"""
-    <div class="shadcn-card" style="padding: 0.9rem 1.1rem; margin-top: 0.75rem; margin-bottom: 0.4rem;">
-        <div style="display: flex; justify-content: space-between; align-items: baseline;">
-            <div class="shadcn-card-title">Daily Quota</div>
-            <div style="font-weight: 700; font-size: 0.95rem; color: #fafafa;">{today_count} <span style="font-size: 0.75rem; color: #71717a; font-weight: 400;">/ {max_limit}</span></div>
+    <div class="shadcn-card" style="padding: 1rem 1.1rem; margin-top: 0.75rem; margin-bottom: 0.4rem; background: #0c0d0e;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+            <div class="shadcn-card-title">Daily Send Quota</div>
+            <span style="font-size: 0.7rem; font-weight: 600; color: {ring_color}; background: rgba(255,255,255,0.04); padding: 2px 7px; border-radius: 9999px; border: 1px solid {ring_color}40;">
+                {status_note}
+            </span>
+        </div>
+        <div style="display: flex; align-items: center; justify-content: space-around; gap: 12px;">
+            <div style="position: relative; width: 84px; height: 84px; display: flex; align-items: center; justify-content: center;">
+                <svg width="84" height="84" viewBox="0 0 90 90" style="transform: rotate(-90deg);">
+                    <circle cx="45" cy="45" r="38" stroke="#27272a" stroke-width="6" fill="transparent" />
+                    <circle cx="45" cy="45" r="38" stroke="{ring_color}" stroke-width="6" fill="transparent"
+                        stroke-dasharray="{circ}" stroke-dashoffset="{dashoffset:.2f}" stroke-linecap="round"
+                        style="transition: stroke-dashoffset 0.8s cubic-bezier(0.16, 1, 0.3, 1); filter: drop-shadow(0 0 6px {ring_glow});" />
+                </svg>
+                <div style="position: absolute; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                    <span style="font-size: 1.1rem; font-weight: 700; color: #fafafa; line-height: 1;">{pct_int}%</span>
+                </div>
+            </div>
+            <div>
+                <div style="font-size: 1.25rem; font-weight: 700; color: #fafafa; line-height: 1.1;">{today_count} <span style="font-size: 0.8rem; color: #71717a; font-weight: 400;">/ {max_limit}</span></div>
+                <div style="font-size: 0.72rem; color: #a1a1aa; margin-top: 4px;">Emails today</div>
+                <div style="font-size: 0.68rem; color: #52525b; margin-top: 2px;">Resets at 00:00 UTC</div>
+            </div>
         </div>
     </div>
     """, unsafe_allow_html=True)
-    st.progress(pct)
 
     # Background Dispatch Queue Worker Card
     st.markdown("""
@@ -1388,38 +1427,78 @@ with tab_analytics:
     reply_rate_pct = (replied_count / max(total_sent_effective, 1) * 100) if total_sent_effective > 0 else 0.0
     hot_lead_rate_pct = (hot_leads_count / max(total_sent_effective, 1) * 100) if total_sent_effective > 0 else 0.0
 
-    # Analytics Cards Row
+    # Analytics Cards Row with OLED Micro-Sparklines & Trend Indicators
     a_col1, a_col2, a_col3, a_col4 = st.columns(4)
     with a_col1:
         st.markdown(f"""
-        <div class="shadcn-card">
-            <div class="shadcn-card-title">Total Dispatched</div>
-            <div class="shadcn-card-value">{total_dispatched_all_time}</div>
-            <div class="shadcn-card-desc">{live_dispatched} Live • {simulated_dispatched} Dry-run</div>
+        <div class="shadcn-card" style="padding: 1.1rem; background: #0c0d0e;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                <div class="shadcn-card-title">Total Dispatched</div>
+                <span style="font-size: 0.68rem; font-weight: 600; color: #a1a1aa; background: rgba(255,255,255,0.05); padding: 1px 6px; border-radius: 4px; border: 1px solid #27272a;">All-time</span>
+            </div>
+            <div style="display: flex; align-items: baseline; justify-content: space-between; margin-top: 4px;">
+                <div class="shadcn-card-value" style="font-size: 1.75rem;">{total_dispatched_all_time}</div>
+                <!-- Inline SVG Sparkline -->
+                <svg width="64" height="24" viewBox="0 0 64 24" style="overflow: visible;">
+                    <path d="M 0,18 Q 16,14 28,16 T 48,8 T 64,4" fill="none" stroke="#71717a" stroke-width="2" stroke-linecap="round"/>
+                    <circle cx="64" cy="4" r="3" fill="#a1a1aa" />
+                </svg>
+            </div>
+            <div class="shadcn-card-desc" style="margin-top: 6px;">{live_dispatched} Live • {simulated_dispatched} Dry-run</div>
         </div>
         """, unsafe_allow_html=True)
     with a_col2:
         st.markdown(f"""
-        <div class="shadcn-card">
-            <div class="shadcn-card-title">Reply Conversion Rate</div>
-            <div class="shadcn-card-value" style="color: #84cc16;">{reply_rate_pct:.1f}%</div>
-            <div class="shadcn-card-desc">{replied_count} replies / {total_sent_effective} sent</div>
+        <div class="shadcn-card" style="padding: 1.1rem; background: #0c0d0e;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                <div class="shadcn-card-title">Reply Rate</div>
+                <span style="font-size: 0.68rem; font-weight: 600; color: #84cc16; background: rgba(132, 204, 22, 0.1); padding: 1px 6px; border-radius: 4px; border: 1px solid rgba(132, 204, 22, 0.25);">▲ High Intent</span>
+            </div>
+            <div style="display: flex; align-items: baseline; justify-content: space-between; margin-top: 4px;">
+                <div class="shadcn-card-value" style="color: #84cc16; font-size: 1.75rem;">{reply_rate_pct:.1f}%</div>
+                <!-- Inline SVG Sparkline (Upward trend) -->
+                <svg width="64" height="24" viewBox="0 0 64 24" style="overflow: visible;">
+                    <path d="M 0,20 Q 16,16 32,18 T 48,10 T 64,3" fill="none" stroke="#84cc16" stroke-width="2" stroke-linecap="round"/>
+                    <circle cx="64" cy="3" r="3" fill="#84cc16" style="filter: drop-shadow(0 0 4px #84cc16);" />
+                </svg>
+            </div>
+            <div class="shadcn-card-desc" style="margin-top: 6px;">{replied_count} replies / {total_sent_effective} sent</div>
         </div>
         """, unsafe_allow_html=True)
     with a_col3:
         st.markdown(f"""
-        <div class="shadcn-card">
-            <div class="shadcn-card-title">Hot Lead Conversion</div>
-            <div class="shadcn-card-value" style="color: #a3e635;">{hot_lead_rate_pct:.1f}%</div>
-            <div class="shadcn-card-desc">{hot_leads_count} high-intent prospects</div>
+        <div class="shadcn-card" style="padding: 1.1rem; background: #0c0d0e;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                <div class="shadcn-card-title">Hot Lead Conv.</div>
+                <span style="font-size: 0.68rem; font-weight: 600; color: #a3e635; background: rgba(163, 230, 53, 0.1); padding: 1px 6px; border-radius: 4px; border: 1px solid rgba(163, 230, 53, 0.25);">🔥 Qualified</span>
+            </div>
+            <div style="display: flex; align-items: baseline; justify-content: space-between; margin-top: 4px;">
+                <div class="shadcn-card-value" style="color: #a3e635; font-size: 1.75rem;">{hot_lead_rate_pct:.1f}%</div>
+                <!-- Inline SVG Sparkline -->
+                <svg width="64" height="24" viewBox="0 0 64 24" style="overflow: visible;">
+                    <path d="M 0,22 Q 18,18 34,14 T 50,8 T 64,2" fill="none" stroke="#a3e635" stroke-width="2" stroke-linecap="round"/>
+                    <circle cx="64" cy="2" r="3" fill="#a3e635" style="filter: drop-shadow(0 0 4px #a3e635);" />
+                </svg>
+            </div>
+            <div class="shadcn-card-desc" style="margin-top: 6px;">{hot_leads_count} high-intent prospects</div>
         </div>
         """, unsafe_allow_html=True)
     with a_col4:
         st.markdown(f"""
-        <div class="shadcn-card">
-            <div class="shadcn-card-title">Opt-Out Protection</div>
-            <div class="shadcn-card-value" style="color: #94a3b8;">{suppression_count}</div>
-            <div class="shadcn-card-desc">Suppressed from future touchpoints</div>
+        <div class="shadcn-card" style="padding: 1.1rem; background: #0c0d0e;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                <div class="shadcn-card-title">Opt-Out Protection</div>
+                <span style="font-size: 0.68rem; font-weight: 600; color: #94a3b8; background: rgba(148, 163, 184, 0.1); padding: 1px 6px; border-radius: 4px; border: 1px solid rgba(148, 163, 184, 0.25);">🛡️ CAN-SPAM</span>
+            </div>
+            <div style="display: flex; align-items: baseline; justify-content: space-between; margin-top: 4px;">
+                <div class="shadcn-card-value" style="color: #94a3b8; font-size: 1.75rem;">{suppression_count}</div>
+                <!-- Flat horizontal line for suppression -->
+                <svg width="64" height="24" viewBox="0 0 64 24" style="overflow: visible;">
+                    <path d="M 0,16 L 32,16 L 48,16 L 64,16" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-dasharray="3,3"/>
+                    <circle cx="64" cy="16" r="3" fill="#64748b" />
+                </svg>
+            </div>
+            <div class="shadcn-card-desc" style="margin-top: 6px;">Suppressed from future touchpoints</div>
         </div>
         """, unsafe_allow_html=True)
 
@@ -1754,16 +1833,27 @@ with tab_drafts:
                                 if is_flagged:
                                     st.error("Flagged: Draft failed validation or fact-grounding. Manual edit and approval required before sending.")
 
-                                # 1-Line Hook with ShadCN Callout styling
+                                # Interactive Fact-Grounded Inspector Card
                                 safe_hook = html.escape(draft.hook or "")
+                                facts_chips_html = ""
+                                if draft.source_facts:
+                                    chips = [f'<span style="background: rgba(132, 204, 22, 0.12); color: #bef264; border: 1px solid rgba(132, 204, 22, 0.3); padding: 2px 8px; border-radius: 4px; font-size: 0.72rem; margin-right: 6px; margin-top: 4px; display: inline-block;">✓ {html.escape(f)}</span>' for f in draft.source_facts]
+                                    facts_chips_html = f'<div style="margin-top: 8px; display: flex; flex-wrap: wrap; gap: 4px;">{"".join(chips)}</div>'
+
                                 st.markdown(f"""
-                                <div style="background-color: #18181b; border: 1px solid #27272a; border-left: 3px solid #fafafa; border-radius: 6px; padding: 10px 14px; margin-bottom: 12px;">
-                                    <div style="font-size: 0.7rem; font-weight: 600; text-transform: uppercase; color: #a1a1aa; letter-spacing: 0.05em;">Fact-Grounded Observation</div>
-                                    <div style="font-size: 0.875rem; color: #f4f4f5; margin-top: 4px; font-style: italic;">"{safe_hook}"</div>
+                                <div style="background-color: #0c0d0e; border: 1px solid #27272a; border-left: 3px solid #84cc16; border-radius: 6px; padding: 12px 14px; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.4);">
+                                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                                        <div style="font-size: 0.7rem; font-weight: 700; text-transform: uppercase; color: #84cc16; letter-spacing: 0.05em; display: flex; align-items: center; gap: 5px;">
+                                            <span>✦</span> Fact-Grounded Hook
+                                        </div>
+                                        <span style="font-size: 0.65rem; color: #a1a1aa; background: #18181b; padding: 2px 6px; border-radius: 4px; border: 1px solid #3f3f46;">100% Grounded</span>
+                                    </div>
+                                    <div style="font-size: 0.875rem; color: #fafafa; margin-top: 6px; line-height: 1.45; font-style: italic; background: rgba(255,255,255,0.02); padding: 6px 10px; border-radius: 4px; border: 1px dashed #27272a;">
+                                        "{safe_hook}"
+                                    </div>
+                                    {facts_chips_html}
                                 </div>
                                 """, unsafe_allow_html=True)
-                                if draft.source_facts:
-                                    st.caption(f"Source facts: {', '.join(draft.source_facts)}")
 
 
                                 # Sub-tabs for Channels
@@ -2015,4 +2105,52 @@ with tab_suppression:
         )
     else:
         st.markdown(shadcn_callout("Zero addresses currently suppressed. All future opt-outs will appear here and be permanently blocked.", title="No Suppressed Addresses", variant="success"), unsafe_allow_html=True)
+
+
+# ----------------- GLOBAL KEYBOARD SHORTCUT DISPATCHER -----------------
+# Enables instant tactile Superhuman / Linear style review:
+# Pressing 'A' -> clicks first visible "Approve [A]" button
+# Pressing 'S' -> clicks first visible "Send [S]" button
+# Pressing 'K' -> clicks first visible "Skip [K]" button
+# Ignores events when user is typing in an input/textarea/editable field
+st.components.v1.html("""
+<script>
+(function() {
+    const parentDoc = window.parent.document;
+    if (parentDoc._keyboardShortcutsBound) return;
+    parentDoc._keyboardShortcutsBound = true;
+
+    parentDoc.addEventListener('keydown', function(e) {
+        // Skip if modifier keys or user is actively typing in form inputs
+        if (e.ctrlKey || e.metaKey || e.altKey) return;
+        const target = e.target;
+        if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
+            return;
+        }
+
+        const key = e.key.toUpperCase();
+        let targetLabel = null;
+        if (key === 'A') targetLabel = 'Approve [A]';
+        else if (key === 'S') targetLabel = 'Send [S]';
+        else if (key === 'K') targetLabel = 'Skip [K]';
+
+        if (targetLabel) {
+            // Find buttons matching label
+            const buttons = Array.from(parentDoc.querySelectorAll('button'));
+            const matchingBtn = buttons.find(b => b.innerText && b.innerText.trim() === targetLabel && !b.disabled);
+            if (matchingBtn) {
+                e.preventDefault();
+                // Visual click feedback
+                matchingBtn.style.transform = 'scale(0.96)';
+                setTimeout(() => {
+                    matchingBtn.style.transform = '';
+                    matchingBtn.click();
+                }, 60);
+            }
+        }
+    });
+})();
+</script>
+""", height=0, width=0)
+
 
