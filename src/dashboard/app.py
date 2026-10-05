@@ -564,6 +564,90 @@ st.markdown(
         font-family: "Material Symbols Rounded" !important;
     }
 
+    /* Dataframe and Table ShadCN styling */
+    [data-testid="stDataFrame"], [data-testid="stTable"] {
+        border: 1px solid var(--figma-border) !important;
+        border-radius: var(--figma-radius-md) !important;
+        background-color: var(--figma-bg-surface) !important;
+        overflow: hidden !important;
+    }
+
+    /* ShadCN Callout / Alert Banner */
+    .shadcn-callout {
+        border-radius: var(--figma-radius-md);
+        padding: 0.85rem 1.15rem;
+        margin: 0.75rem 0;
+        display: flex;
+        gap: 0.75rem;
+        align-items: flex-start;
+        font-size: 0.875rem;
+        border: 1px solid var(--figma-border);
+        background-color: var(--figma-bg-surface-elevated);
+    }
+    .shadcn-callout-info {
+        border-left: 3px solid #38bdf8;
+        background-color: rgba(56, 189, 248, 0.06);
+    }
+    .shadcn-callout-success {
+        border-left: 3px solid #84cc16;
+        background-color: rgba(132, 204, 22, 0.08);
+    }
+    .shadcn-callout-warning {
+        border-left: 3px solid #f59e0b;
+        background-color: rgba(245, 158, 11, 0.08);
+    }
+    .shadcn-callout-destructive {
+        border-left: 3px solid #ef4444;
+        background-color: rgba(239, 68, 68, 0.08);
+    }
+
+    /* ShadCN Separator with label */
+    .shadcn-separator {
+        display: flex;
+        align-items: center;
+        text-align: center;
+        margin: 1.25rem 0;
+        color: var(--figma-text-muted);
+        font-size: 0.75rem;
+        font-weight: 500;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+    }
+    .shadcn-separator::before,
+    .shadcn-separator::after {
+        content: '';
+        flex: 1;
+        border-bottom: 1px solid var(--figma-border);
+    }
+    .shadcn-separator:not(:empty)::before {
+        margin-right: 0.85rem;
+    }
+    .shadcn-separator:not(:empty)::after {
+        margin-left: 0.85rem;
+    }
+
+    /* ShadCN Avatar / Lead initials circle */
+    .shadcn-avatar {
+        width: 34px;
+        height: 34px;
+        border-radius: 9999px;
+        background: #18181b;
+        border: 1px solid var(--figma-border);
+        color: #f4f4f5;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.75rem;
+        font-weight: 600;
+        letter-spacing: -0.02em;
+        flex-shrink: 0;
+    }
+    .shadcn-avatar.accent {
+        background: rgba(132, 204, 22, 0.15);
+        border-color: rgba(132, 204, 22, 0.35);
+        color: #a3e635;
+    }
+
     /* Dividers */
     hr {
         border-color: #27272a !important;
@@ -587,9 +671,52 @@ def shadcn_badge(label: str, variant: str = "secondary") -> str:
         "cloud": "background-color: rgba(132, 204, 22, 0.15); color: #bef264; border: 1px solid rgba(132, 204, 22, 0.35);",
     }
     style = variants.get(variant, variants["secondary"])
-    return (
-        f'<span class="shadcn-badge" style="{style}">{label}</span>'
-    )
+    return f'<span class="shadcn-badge" style="{style}">{label}</span>'
+
+
+def shadcn_status_badge(status: str) -> str:
+    """Maps status string to appropriate ShadCN badge variant."""
+    status_clean = str(status).upper().strip()
+    mapping = {
+        "HOT_LEAD": ("Hot Lead", "success"),
+        "APPROVED": ("Approved", "success"),
+        "READY_FOR_REVIEW": ("Ready for Review", "default"),
+        "NEEDS_MANUAL_REVIEW": ("Manual Review", "warning"),
+        "FLAGGED": ("Flagged", "destructive"),
+        "OPTED_OUT": ("Opted Out", "destructive"),
+        "REPLIED": ("Replied", "cloud"),
+        "EMAIL_SENT": ("Email Sent", "secondary"),
+        "WHATSAPP_SENT": ("WhatsApp Sent", "secondary"),
+        "LINKEDIN_SENT": ("LinkedIn Sent", "secondary"),
+        "PENDING_RESEARCH": ("Pending Research", "secondary"),
+        "SKIPPED": ("Skipped", "secondary"),
+    }
+    label, variant = mapping.get(status_clean, (status_clean.replace("_", " ").title(), "secondary"))
+    return shadcn_badge(label, variant)
+
+
+def shadcn_callout(text: str, title: str = "", variant: str = "info") -> str:
+    """Renders a ShadCN alert callout banner."""
+    title_html = f'<div style="font-weight: 600; color: #fafafa; margin-bottom: 2px;">{title}</div>' if title else ""
+    return f"""
+    <div class="shadcn-callout shadcn-callout-{variant}">
+        <div>
+            {title_html}
+            <div style="color: #d4d4d8; font-size: 0.8125rem; line-height: 1.45;">{text}</div>
+        </div>
+    </div>
+    """
+
+
+def shadcn_separator(label: str = "") -> str:
+    """Renders a ShadCN horizontal separator with optional text label."""
+    return f'<div class="shadcn-separator">{label}</div>'
+
+
+def shadcn_avatar(initials: str, accent: bool = False) -> str:
+    """Renders a ShadCN user avatar circle."""
+    accent_cls = " accent" if accent else ""
+    return f'<div class="shadcn-avatar{accent_cls}">{initials[:2].upper()}</div>'
 
 
 config = load_config()
@@ -1139,13 +1266,31 @@ with tab_drafts:
             flagged_tag = " • [FLAGGED]" if is_flagged else ""
 
 
-            # Expander header
-            with st.expander(
-                f"**{contact.full_name}** — {contact.job_title or 'Owner'}, **{contact.company}** [{contact.status.value}]{flagged_tag}",
-                expanded=False,
-            ):
-                col_left, col_right = st.columns([1, 1])
+            # ShadCN Prospect Card Preview Banner
+            status_badge_html = shadcn_status_badge(contact.status.value)
+            flag_badge_html = f" {shadcn_badge('FLAGGED', 'destructive')}" if is_flagged else ""
+            initials = "".join([part[0] for part in contact.full_name.split() if part]) or "P"
+            avatar_html = shadcn_avatar(initials, accent=(contact.status == ContactStatus.HOT_LEAD))
+            title_text = contact.job_title or "Owner / Founder"
+            expander_label = f"{contact.full_name} — {title_text}, {contact.company} [{contact.status.value}]{flagged_tag}"
 
+            st.markdown(f"""
+            <div style="background-color: #0c0d0e; border: 1px solid var(--figma-border); border-radius: var(--figma-radius-md) var(--figma-radius-md) 0 0; padding: 0.75rem 1rem; display: flex; align-items: center; justify-content: space-between; margin-bottom: -1px;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    {avatar_html}
+                    <div>
+                        <div style="font-weight: 600; font-size: 0.9375rem; color: #fafafa;">{contact.full_name} <span style="font-weight: 400; font-size: 0.8125rem; color: #a1a1aa;">• {title_text} at {contact.company}</span></div>
+                        <div style="font-size: 0.75rem; color: #71717a; margin-top: 1px;">{contact.email}</div>
+                    </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 6px;">
+                    {status_badge_html}{flag_badge_html}
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+            with st.expander("Review Dossier & Outreach Copy", expanded=False):
+                col_left, col_right = st.columns([1, 1])
 
                 # Left Column: Dossier
                 with col_left:
@@ -1426,7 +1571,7 @@ with tab_followups:
 
     contacts_for_fu = db.list_contacts(ContactStatus.EMAIL_SENT)
     if not contacts_for_fu:
-        st.info("No pending follow-ups right now.")
+        st.markdown(shadcn_callout("No contacts currently pending secondary follow-up touchpoints.", title="Queue Empty", variant="info"), unsafe_allow_html=True)
     else:
         for contact in contacts_for_fu:
             draft = db.get_draft(contact.id)
@@ -1465,7 +1610,7 @@ with tab_suppression:
             sup_email = st.text_input("Email to suppress:")
         with col_s2:
             sup_reason = st.text_input("Reason:", value="Opt-out requested")
-        add_sup = st.form_submit_button("Add to Suppression")
+        add_sup = st.form_submit_button("Add to Suppression", type="primary")
         if add_sup and sup_email:
             suppression_mgr.suppress_contact(sup_email, reason=sup_reason)
             st.success(f"Suppressed {sup_email}.")
@@ -1478,5 +1623,5 @@ with tab_suppression:
             use_container_width=True,
         )
     else:
-        st.info("No suppressed emails recorded.")
+        st.markdown(shadcn_callout("Zero addresses currently suppressed. All future opt-outs will appear here and be permanently blocked.", title="No Suppressed Addresses", variant="success"), unsafe_allow_html=True)
 
