@@ -39,9 +39,38 @@ class WebsiteCrawler:
             )
         }
 
+    @staticmethod
+    def is_safe_public_url(url: str) -> bool:
+        """Validates that URL scheme is http/https and targets public IP (SSRF protection)."""
+        import ipaddress
+        try:
+            parsed = urlparse(url if "://" in url else "https://" + url)
+            if parsed.scheme not in ("http", "https"):
+                return False
+            hostname = parsed.hostname
+            if not hostname:
+                return False
+            # Block internal hostnames, metadata endpoints, and loopback
+            if hostname.lower() in ("localhost", "127.0.0.1", "::1", "0.0.0.0", "metadata.google.internal"):
+                return False
+            if hostname.lower().endswith((".local", ".internal", ".lan")):
+                return False
+            try:
+                ip = ipaddress.ip_address(hostname)
+                if ip.is_private or ip.is_loopback or ip.is_reserved or ip.is_link_local:
+                    return False
+            except ValueError:
+                pass
+            return True
+        except Exception:
+            return False
+
     def fetch_url(self, url: str) -> Optional[str]:
         if not url.startswith("http://") and not url.startswith("https://"):
             url = "https://" + url
+        if not self.is_safe_public_url(url):
+            logger.debug(f"Blocked request to non-public/unsafe URL: {url}")
+            return None
         try:
             resp = requests.get(url, headers=self.headers, timeout=self.timeout, allow_redirects=True)
             if resp.status_code == 200:

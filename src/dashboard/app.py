@@ -773,7 +773,8 @@ if dashboard_password:
                 pwd_input = st.text_input("Access Password", type="password", placeholder="Enter dashboard password...")
                 submit_login = st.form_submit_button("Unlock Studio", type="primary", use_container_width=True)
                 if submit_login:
-                    if pwd_input == dashboard_password:
+                    import hmac
+                    if hmac.compare_digest(pwd_input.strip(), dashboard_password):
                         st.session_state["authenticated"] = True
                         st.rerun()
                     else:
